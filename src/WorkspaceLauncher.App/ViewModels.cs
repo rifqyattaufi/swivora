@@ -52,21 +52,46 @@ public sealed class AppVm : Observable
         string.IsNullOrWhiteSpace(StopCommand) ? null : StopCommand.Trim());
 }
 
-/// <summary>Either the gaming mode (IsGaming) or one work workspace.</summary>
+public enum TargetKind { AppsMode, WorkspacesMode, Workspace }
+
+/// <summary>One row of the left list: a mode (with its own apps, or holding workspaces) or a workspace under a mode.</summary>
 public sealed class TargetVm : Observable
 {
     string name;
-    public TargetVm(string name, bool isGaming, IEnumerable<AppEntry> apps)
+    TargetVm? parent;
+
+    public TargetVm(string name, TargetKind kind, IEnumerable<AppEntry> apps, TargetVm? parent = null)
     {
         this.name = name;
-        IsGaming = isGaming;
+        Kind = kind;
         Apps = new ObservableCollection<AppVm>(apps.Select(AppVm.From));
+        Parent = parent;
     }
 
-    public bool IsGaming { get; }
-    public string Name { get => name; set => Set(ref name, value); }
+    public TargetKind Kind { get; }
+    public bool IsMode => Kind != TargetKind.Workspace;
+    public bool HasApps => Kind != TargetKind.WorkspacesMode;
+    public string Name { get => name; set { Set(ref name, value); } }
     public ObservableCollection<AppVm> Apps { get; }
-    public string Subtitle => IsGaming ? "Mode" : "Workspace";
+
+    public TargetVm? Parent
+    {
+        get => parent;
+        private set
+        {
+            parent = value;
+            if (value is not null) value.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(Name)) Raise(nameof(Subtitle)); };
+        }
+    }
+
+    public string Subtitle => Kind switch
+    {
+        TargetKind.AppsMode => "Mode with apps",
+        TargetKind.WorkspacesMode => "Mode with workspaces",
+        _ => $"Workspace in {Parent?.Name}",
+    };
+
+    public System.Windows.Thickness Indent => Kind == TargetKind.Workspace ? new(24, 4, 4, 4) : new(4, 4, 4, 4);
 }
 
 public sealed class HotkeyRowVm : Observable

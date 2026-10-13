@@ -21,8 +21,8 @@ public sealed class SessionManager(IDesktopBackend backend, ProcessRunner runner
 {
     readonly SemaphoreSlim gate = new(1, 1);
     readonly Dictionary<string, Session> workspaces = new(StringComparer.OrdinalIgnoreCase);
-    Session? gaming;
-    Guid? home; // the desktop we return to when a workspace desktop is removed
+    Session? flat;      // the running apps-mode, if any
+    Guid? home;         // the desktop we return to when a workspace desktop is removed
 
     // ponytail: window discovery is "what appeared after launch"; an unrelated window opened in that
     // few-second window would be adopted too. Per-app window matching is the upgrade if that bites.
@@ -32,38 +32,34 @@ public sealed class SessionManager(IDesktopBackend backend, ProcessRunner runner
     public Func<AppEntry, bool> ConfirmForceKill { get; set; } = _ => false;
     public event Action<string>? Warning;
 
-    public bool GamingActive => gaming is not null;
+    /// <summary>Name of the mode that is running, or null. Only one mode runs at a time.</summary>
+    public string? ActiveMode { get; private set; }
     public IReadOnlyList<string> ActiveWorkspaces => workspaces.Keys.ToList();
     public bool IsDegraded => !backend.IsAvailable;
 
     static string Key(AppEntry a) => $"{Path.GetFileNameWithoutExtension(a.Exe).ToLowerInvariant()}|{a.Args.Trim()}";
+    static bool Same(string? a, string? b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
     // ---- public operations -------------------------------------------------
 
-    public Task StartGaming(Config config) => Locked(async () =>
+    /// <summary>Starts an apps-mode: closes whatever other mode is running (keeping apps both modes use), then launches its apps.</summary>
+    public Task StartMode(Mode mode) => Locked(async () =>
     {
-        if (gaming is not null) return;
-        var keep = config.Gaming.Select(Key).ToHashSet();
-        foreach (var s in workspaces.Values.ToList()) await CloseSession(s, keep);
-        foreach (var s in workspaces.Values.ToList()) RemoveDesktop(s); // apps kept for gaming fall back to the home desktop
-        workspaces.Clear();
-        gaming = new Session("gaming", null);
-        await LaunchApps(gaming, config.Gaming);
+        if (Same(ActiveMode, mode.Name) && flat is not null) return;
+        await LeaveOtherModes(mode.Name, mode.AppList.Select(Key).ToHashSet());
+        flat = new Session(mode.Name, null);
+        await LaunchApps(flat, mode.AppList);
     });
 
     /// <summary>Starts the workspace on a fresh desktop, or just switches to it when it is already running.</summary>
-    public Task StartWorkspace(Workspace workspace) => Locked(async () =>
+    public Task StartWorkspace(Mode mode, Workspace workspace) => Locked(async () =>
     {
-        if (workspaces.TryGetValue(workspace.Name, out var existing))
+        if (Same(ActiveMode, mode.Name) && workspaces.TryGetValue(workspace.Name, out var existing))
         {
             GoToDesktop(existing);
             return;
         }
-        if (gaming is { } g)
-        {
-            await CloseSession(g, workspace.Apps.Select(Key).ToHashSet());
-            gaming = null;
-        }
+        await LeaveOtherModes(mode.Name, workspace.Apps.Select(Key).ToHashSet());
         home ??= SafeCurrent();
         var session = new Session(workspace.Name, SafeCreate());
         workspaces[workspace.Name] = session;
@@ -82,6 +78,7 @@ public sealed class SessionManager(IDesktopBackend backend, ProcessRunner runner
         if (!workspaces.Remove(workspaceName, out var s)) return;
         await CloseSession(s, []);
         RemoveDesktop(s);
+        if (workspaces.Count == 0 && flat is null) ActiveMode = null;
     });
 
     public Task StopAll() => Locked(async () =>
@@ -89,11 +86,27 @@ public sealed class SessionManager(IDesktopBackend backend, ProcessRunner runner
         foreach (var s in workspaces.Values.ToList()) await CloseSession(s, []);
         foreach (var s in workspaces.Values.ToList()) RemoveDesktop(s);
         workspaces.Clear();
-        if (gaming is { } g) await CloseSession(g, []);
-        gaming = null;
+        if (flat is { } f) await CloseSession(f, []);
+        flat = null;
+        ActiveMode = null;
     });
 
     // ---- internals ---------------------------------------------------------
+
+    /// <summary>Switching to a different mode ends the running one. Apps in <paramref name="keep"/> stay open and are adopted by the new mode.</summary>
+    async Task LeaveOtherModes(string newMode, HashSet<string> keep)
+    {
+        if (ActiveMode is not null && !Same(ActiveMode, newMode))
+        {
+            foreach (var s in workspaces.Values.ToList()) await CloseSession(s, keep);
+            foreach (var s in workspaces.Values.ToList()) RemoveDesktop(s); // kept apps fall back to the home desktop
+            workspaces.Clear();
+            if (flat is { } f) await CloseSession(f, keep);
+            flat = null;
+        }
+        ActiveMode = newMode;
+    }
+
 
     async Task Locked(Func<Task> body)
     {

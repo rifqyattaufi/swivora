@@ -2,10 +2,12 @@
 
 Pick a mode when you sign in to Windows, then switch modes and project workspaces on the fly.
 
-- **Gaming** starts the apps you list (Discord, Steam, ...).
-- **Work** has one **workspace per project**. Each workspace has its own app list (for example only one of them needs Docker) and opens on its **own Windows virtual desktop**.
-- Several workspaces can run at once. Switching between them only changes the desktop, so nothing is closed or restarted.
-- Switching mode closes the old mode's apps politely (like clicking X) and starts the new ones. Apps that both modes use stay open.
+You can have as many **modes** as you like, of two kinds:
+
+- **Apps mode** (like *Gaming*): one list of apps, started together (Discord, Steam, ...).
+- **Workspaces mode** (like *Work*): one **workspace per project**. Each workspace has its own app list (for example only one of them needs Docker) and opens on its **own Windows virtual desktop**.
+
+Several workspaces of a mode can run at once. Switching between them only changes the desktop, so nothing is closed or restarted. Switching **mode** closes the old mode's apps politely (like clicking X) and starts the new ones. Apps that both modes use stay open.
 - Everything is driven from a tray icon, a picker window and global hotkeys. A settings window edits the config.
 
 ## Requirements
@@ -30,27 +32,39 @@ To build from source you need the .NET 10 SDK. `dotnet test` runs the tests; the
 | Action | How |
 |---|---|
 | Open the picker | Tray icon click, `Ctrl+Alt+P`, or start the exe again |
-| Gaming / Work | Picker, tray menu, or `Ctrl+Alt+M` to toggle |
-| Jump to workspace N | `Ctrl+Alt+1` ... `Ctrl+Alt+9` (opens it if it is not running) |
-| New workspace | Picker > Work > Add workspace, then fill in its apps |
+| Start a mode | Picker or tray menu. `Ctrl+Alt+M` cycles to the next mode |
+| Jump to workspace N | `Ctrl+Alt+1` ... `Ctrl+Alt+9` (opens it if it is not running; counted across all workspaces modes) |
+| Jump to mode N | Off by default. Set `Open mode N` in Settings > Hotkeys |
+| New mode | Settings > Apps > Add mode, or tray > Add mode |
+| New workspace | Picker > a workspaces mode > Add workspace, then fill in its apps |
 | Close one workspace | Tray > Close workspace |
 
 All hotkeys can be changed or turned off in **Settings > Hotkeys**. If another program already owns a hotkey you get a notice.
 
 ## Config
 
-`%APPDATA%\WorkspaceLauncher\config.json` (set `WORKSPACE_LAUNCHER_CONFIG` to use another file). The settings window edits it; hand edits are picked up live.
+`%APPDATA%\WorkspaceLauncher\config.json` (set `WORKSPACE_LAUNCHER_CONFIG` to use another file). The settings window edits it; hand edits are picked up live. Files from the first version (`"gaming"` and `"work"` at the top level) are still read and become the two modes Gaming and Work.
 
 ```json
 {
-  "gaming": [ { "exe": "C:\Program Files\Steam\steam.exe" } ],
-  "work": [
+  "modes": [
     {
-      "name": "My project",
-      "apps": [
-        { "exe": "code", "args": "D:\projects\my-project" },
-        { "exe": "C:\Program Files\Docker\Docker\Docker Desktop.exe",
-          "stopCommand": "docker compose -f D:\projects\my-project\compose.yml down" }
+      "name": "Gaming",
+      "kind": "apps",
+      "apps": [ { "exe": "C:\\Program Files (x86)\\Steam\\steam.exe" } ]
+    },
+    {
+      "name": "Work",
+      "kind": "workspaces",
+      "workspaces": [
+        {
+          "name": "My project",
+          "apps": [
+            { "exe": "code", "args": "D:\\projects\\my-project" },
+            { "exe": "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe",
+              "stopCommand": "docker compose -f D:\\projects\\my-project\\compose.yml down" }
+          ]
+        }
       ]
     }
   ],

@@ -17,20 +17,9 @@
             <!-- page 1: mode -->
             <StackPanel x:Name="ModePage">
                 <TextBlock Text="Choose a mode" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,16" />
-                <ui:Button x:Name="GamingButton" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                           Padding="16,12" Margin="0,0,0,8" Click="OnGaming">
-                    <StackPanel>
-                        <TextBlock Text="Gaming" FontSize="16" FontWeight="SemiBold" />
-                        <TextBlock x:Name="GamingInfo" Opacity="0.7" />
-                    </StackPanel>
-                </ui:Button>
-                <ui:Button x:Name="WorkButton" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                           Padding="16,12" Click="OnWork">
-                    <StackPanel>
-                        <TextBlock Text="Work" FontSize="16" FontWeight="SemiBold" />
-                        <TextBlock x:Name="WorkInfo" Opacity="0.7" />
-                    </StackPanel>
-                </ui:Button>
+                <StackPanel x:Name="ModeList" />
+                <TextBlock x:Name="NoModesText" Opacity="0.7" TextWrapping="Wrap"
+                           Text="No modes yet. Add one in Settings." />
             </StackPanel>
 
             <!-- page 2: workspaces -->
@@ -38,7 +27,7 @@
                 <DockPanel Margin="0,0,0,16">
                     <ui:Button DockPanel.Dock="Left" Content="Back" Appearance="Transparent" Click="OnBack"
                                Padding="8,4" Margin="0,0,12,0" />
-                    <TextBlock Text="Pick a workspace" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock x:Name="WorkTitle" Text="Pick a workspace" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
                 </DockPanel>
                 <StackPanel x:Name="WorkspaceList" />
                 <TextBlock x:Name="EmptyText" Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,12"

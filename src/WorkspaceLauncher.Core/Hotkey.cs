@@ -48,6 +48,8 @@ public static class HotkeyDefaults
     public const string SwitchMode = "switchMode";
     public const string Picker = "picker";
     public static string Workspace(int n) => $"workspace{n}";
+    /// <summary>Direct hotkey for the Nth mode. Off by default.</summary>
+    public static string Mode(int n) => $"mode{n}";
 
     /// <summary>Defaults first, then the user's entries override them. A blank value disables that hotkey.</summary>
     public static Dictionary<string, string> Merge(IReadOnlyDictionary<string, string> user)

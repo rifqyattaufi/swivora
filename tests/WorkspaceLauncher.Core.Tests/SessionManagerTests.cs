@@ -17,6 +17,12 @@ class FakeDesktops : IDesktopBackend
     public void Remove(Guid d, Guid fallback) { Desktops.Remove(d); Removed.Add((d, fallback)); }
 }
 
+static class ManagerTestExtensions
+{
+    public static readonly Mode WorkMode = new("Work", ModeKind.Workspaces);
+    public static Task StartWorkspace(this SessionManager m, Workspace w) => m.StartWorkspace(WorkMode, w);
+}
+
 // Real windows: winver.exe and charmap.exe are classic Win32 apps that ship with Windows and close on WM_CLOSE.
 [Collection("gui")]
 public class SessionManagerTests : IDisposable
@@ -42,7 +48,7 @@ public class SessionManagerTests : IDisposable
 
     static int Count(string name) => Process.GetProcessesByName(name).Length;
 
-    static Config GamingWith(params AppEntry[] apps) => new([.. apps], [], []);
+    static Mode GamingWith(params AppEntry[] apps) => new("Gaming", ModeKind.Apps, [.. apps]);
 
     [Fact]
     public async Task StartWorkspace_CreatesOwnDesktop_GoesThere_LaunchesApps()
@@ -97,10 +103,10 @@ public class SessionManagerTests : IDisposable
     {
         await manager.StartWorkspace(new Workspace("A", [winver, charmap]));
         var winverPid = Process.GetProcessesByName("winver").Single().Id;
-        await manager.StartGaming(GamingWith(winver));
+        await manager.StartMode(GamingWith(winver));
         Assert.Equal(0, Count("charmap"));
         Assert.Equal(winverPid, Process.GetProcessesByName("winver").Single().Id); // not closed, not relaunched
-        Assert.True(manager.GamingActive);
+        Assert.Equal("Gaming", manager.ActiveMode);
         Assert.Empty(manager.ActiveWorkspaces);
         Assert.Single(desktops.Desktops); // the workspace desktop is gone, only home remains
     }
@@ -108,12 +114,12 @@ public class SessionManagerTests : IDisposable
     [Fact]
     public async Task GamingToWork_ClosesGamingApps_ButKeepsSharedApps()
     {
-        await manager.StartGaming(GamingWith(winver, charmap));
+        await manager.StartMode(GamingWith(winver, charmap));
         var winverPid = Process.GetProcessesByName("winver").Single().Id;
         await manager.StartWorkspace(new Workspace("A", [winver]));
         Assert.Equal(0, Count("charmap"));
         Assert.Equal(winverPid, Process.GetProcessesByName("winver").Single().Id);
-        Assert.False(manager.GamingActive);
+        Assert.Equal("Work", manager.ActiveMode);
     }
 
     [Fact]
@@ -146,6 +152,47 @@ public class SessionManagerTests : IDisposable
         Assert.Equal(0, Count("winver") + Count("charmap"));
         Assert.Empty(manager.ActiveWorkspaces);
         Assert.Single(desktops.Desktops);
+    }
+
+    [Fact]
+    public async Task SwitchingBetweenTwoAppsModes_ClosesTheFirst_KeepsSharedApps()
+    {
+        await manager.StartMode(new Mode("Gaming", ModeKind.Apps, [winver, charmap]));
+        var winverPid = Process.GetProcessesByName("winver").Single().Id;
+        await manager.StartMode(new Mode("Streaming", ModeKind.Apps, [winver]));
+        Assert.Equal("Streaming", manager.ActiveMode);
+        Assert.Equal(0, Count("charmap"));
+        Assert.Equal(winverPid, Process.GetProcessesByName("winver").Single().Id);
+    }
+
+    [Fact]
+    public async Task StartingAModeThatIsAlreadyRunning_DoesNothing()
+    {
+        var gaming = new Mode("Gaming", ModeKind.Apps, [winver]);
+        await manager.StartMode(gaming);
+        await manager.StartMode(gaming);
+        Assert.Equal(1, Count("winver"));
+    }
+
+    [Fact]
+    public async Task WorkspacesOfAnotherWorkspacesMode_ReplaceTheRunningOnes()
+    {
+        var study = new Mode("Study", ModeKind.Workspaces);
+        await manager.StartWorkspace(new Workspace("A", [winver, charmap]));
+        await manager.StartWorkspace(study, new Workspace("Exam", [winver]));
+        Assert.Equal("Study", manager.ActiveMode);
+        Assert.Equal(["Exam"], manager.ActiveWorkspaces);
+        Assert.Equal(0, Count("charmap"));
+        Assert.Equal(1, Count("winver"));
+        Assert.Equal(2, desktops.Desktops.Count); // Work's desktop removed, Study's created
+    }
+
+    [Fact]
+    public async Task ClosingTheLastWorkspace_ClearsTheActiveMode()
+    {
+        await manager.StartWorkspace(new Workspace("A", [winver]));
+        await manager.CloseWorkspace("A");
+        Assert.Null(manager.ActiveMode);
     }
 
     [Fact]

@@ -8,6 +8,9 @@ using WorkspaceLauncher.Core;
 
 namespace WorkspaceLauncher.App;
 
+/// <summary>What the Settings window should do when it opens.</summary>
+public enum ConfigIntent { Open, AddWorkspace, AddAppsMode, AddWorkspacesMode }
+
 public partial class App : Application
 {
     const string SingleInstanceName = "WorkspaceLauncher.SingleInstance";
@@ -70,7 +73,8 @@ public partial class App : Application
         lastHotkeyProblems = joined;
     }
 
-    public void ShowPicker(string? page)
+    /// <param name="modeName">Null shows the mode list; a workspaces-mode name shows that mode's workspaces.</param>
+    public void ShowPicker(string? modeName)
     {
         if (host is null) return;
         if (picker is null)
@@ -78,10 +82,11 @@ public partial class App : Application
             picker = new PickerWindow(host, ShowConfig);
             picker.Closed += (_, _) => picker = null;
         }
-        picker.Open(page);
+        picker.Open(modeName);
     }
 
-    public void ShowConfig(bool newWorkspace)
+    /// <param name="modeName">For AddWorkspace: the mode the new workspace belongs to.</param>
+    public void ShowConfig(ConfigIntent intent, string? modeName = null)
     {
         if (host is null) return;
         if (config is null)
@@ -90,7 +95,12 @@ public partial class App : Application
             config.Closed += (_, _) => config = null;
             config.Show();
         }
-        if (newWorkspace) config.AddWorkspace();
+        switch (intent)
+        {
+            case ConfigIntent.AddWorkspace: config.AddWorkspace(modeName); break;
+            case ConfigIntent.AddAppsMode: config.AddMode(ModeKind.Apps); break;
+            case ConfigIntent.AddWorkspacesMode: config.AddMode(ModeKind.Workspaces); break;
+        }
         config.Activate();
     }
 

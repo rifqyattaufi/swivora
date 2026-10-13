@@ -1,7 +1,6 @@
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -16,6 +15,8 @@ namespace WorkspaceLauncher.App;
 
 public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
 {
+    const int DirectModeHotkeys = 5;
+
     static readonly OwnershipOption[] Options =
     [
         new(Ownership.Adopt, "Take it over and close it later",
@@ -61,25 +62,40 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         loading = true;
         shown = cfg;
         targets.Clear();
-        targets.Add(Watch(new TargetVm("Gaming", true, cfg.Gaming)));
-        foreach (var ws in cfg.Work) targets.Add(Watch(new TargetVm(ws.Name, false, ws.Apps)));
+        foreach (var mode in cfg.Modes)
+        {
+            if (mode.Kind == ModeKind.Apps)
+            {
+                targets.Add(Watch(new TargetVm(mode.Name, TargetKind.AppsMode, mode.AppList)));
+                continue;
+            }
+            var parent = Watch(new TargetVm(mode.Name, TargetKind.WorkspacesMode, []));
+            targets.Add(parent);
+            foreach (var ws in mode.WorkspaceList) targets.Add(Watch(new TargetVm(ws.Name, TargetKind.Workspace, ws.Apps, parent)));
+        }
 
         hotkeys.Clear();
         var merged = HotkeyDefaults.Merge(cfg.Hotkeys);
-        hotkeys.Add(Row(merged, HotkeyDefaults.SwitchMode, "Switch between Gaming and Work"));
+        hotkeys.Add(Row(merged, HotkeyDefaults.SwitchMode, "Switch to the next mode"));
         hotkeys.Add(Row(merged, HotkeyDefaults.Picker, "Open the picker"));
+        var all = cfg.AllWorkspaces();
         for (var i = 1; i <= 9; i++)
         {
-            var label = i <= cfg.Work.Count ? $"Workspace {i}: {cfg.Work[i - 1].Name}" : $"Workspace {i}";
+            var label = i <= all.Count ? $"Workspace {i}: {all[i - 1].Workspace.Name}" : $"Workspace {i}";
             hotkeys.Add(Row(merged, HotkeyDefaults.Workspace(i), label));
         }
+        for (var i = 1; i <= DirectModeHotkeys; i++)
+        {
+            var label = i <= cfg.Modes.Count ? $"Open mode {i}: {cfg.Modes[i - 1].Name}" : $"Open mode {i}";
+            hotkeys.Add(Row(merged, HotkeyDefaults.Mode(i), label));
+        }
 
-        Targets.SelectedIndex = 0;
+        if (targets.Count > 0) Targets.SelectedIndex = 0; else OnTargetChanged(Targets, null);
         loading = false;
         SetDirty(false);
     }
 
-    HotkeyRowVm Row(System.Collections.Generic.Dictionary<string, string> merged, string key, string label) =>
+    HotkeyRowVm Row(Dictionary<string, string> merged, string key, string label) =>
         Watch(new HotkeyRowVm(key, label, merged.GetValueOrDefault(key, "")));
 
     T Watch<T>(T vm) where T : Observable
@@ -87,10 +103,10 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         vm.PropertyChanged += (_, _) => MarkDirty();
         if (vm is TargetVm t)
         {
-            t.Apps.CollectionChanged += (_, _) => MarkDirty();
             foreach (var a in t.Apps) Watch(a);
             t.Apps.CollectionChanged += (_, e) =>
             {
+                MarkDirty();
                 if (e.NewItems is not null) foreach (AppVm a in e.NewItems) a.PropertyChanged += (_, _) => MarkDirty();
             };
         }
@@ -113,18 +129,14 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         if (ReferenceEquals(host.Config, shown) || dirty) return;
         var selected = (Targets.SelectedItem as TargetVm)?.Name;
         Build(host.Config);
-        Targets.SelectedItem = targets.FirstOrDefault(t => t.Name == selected) ?? targets[0];
+        Targets.SelectedItem = targets.FirstOrDefault(t => t.Name == selected) ?? targets.FirstOrDefault();
     }
 
     void OnSave(object sender, RoutedEventArgs e)
     {
         if (Validate() is { } problem) { Fail(problem); return; }
 
-        var cfg = new Config(
-            targets[0].Apps.Select(a => a.ToEntry()).ToList(),
-            targets.Skip(1).Select(t => new Workspace(t.Name.Trim(), t.Apps.Select(a => a.ToEntry()).ToList())).ToList(),
-            ChangedHotkeys());
-        try { host.Save(cfg); }
+        try { host.Save(new Config(BuildModes(), ChangedHotkeys())); }
         catch (IOException ex) { Fail($"Could not save: {ex.Message}"); return; }
 
         shown = host.Config;
@@ -132,18 +144,29 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         Status.Text = "Saved";
     }
 
-    System.Collections.Generic.Dictionary<string, string> ChangedHotkeys()
+    List<Mode> BuildModes() => targets.Where(t => t.IsMode).Select(t => t.Kind == TargetKind.AppsMode
+        ? new Mode(t.Name.Trim(), ModeKind.Apps, t.Apps.Select(a => a.ToEntry()).ToList())
+        : new Mode(t.Name.Trim(), ModeKind.Workspaces, null,
+            targets.Where(c => c.Parent == t).Select(c => new Workspace(c.Name.Trim(), c.Apps.Select(a => a.ToEntry()).ToList())).ToList())).ToList();
+
+    Dictionary<string, string> ChangedHotkeys()
     {
-        var defaults = HotkeyDefaults.Merge(new System.Collections.Generic.Dictionary<string, string>());
+        var defaults = HotkeyDefaults.Merge(new Dictionary<string, string>());
         return hotkeys.Where(h => h.Value != defaults.GetValueOrDefault(h.Key, ""))
                       .ToDictionary(h => h.Key, h => h.Value);
     }
 
     string? Validate()
     {
-        var names = targets.Skip(1).Select(t => t.Name.Trim()).ToList();
-        if (names.Any(string.IsNullOrEmpty)) return "Give every workspace a name.";
-        if (names.Distinct(StringComparer.OrdinalIgnoreCase).Count() != names.Count) return "Two workspaces share a name. Rename one of them.";
+        var modes = targets.Where(t => t.IsMode).ToList();
+        if (modes.Any(m => string.IsNullOrWhiteSpace(m.Name))) return "Give every mode a name.";
+        if (Duplicate(modes.Select(m => m.Name))) return "Two modes share a name. Rename one of them.";
+        foreach (var m in modes.Where(m => m.Kind == TargetKind.WorkspacesMode))
+        {
+            var names = targets.Where(c => c.Parent == m).Select(c => c.Name).ToList();
+            if (names.Any(string.IsNullOrWhiteSpace)) return $"Give every workspace in {m.Name} a name.";
+            if (Duplicate(names)) return $"Two workspaces in {m.Name} share a name. Rename one of them.";
+        }
         foreach (var t in targets)
             foreach (var a in t.Apps)
                 if (string.IsNullOrWhiteSpace(a.Exe)) return $"An app in {t.Name} has no program. Set one or remove the app.";
@@ -152,6 +175,12 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         var used = hotkeys.Where(h => !string.IsNullOrWhiteSpace(h.Value)).GroupBy(h => h.Value, StringComparer.OrdinalIgnoreCase)
                           .FirstOrDefault(g => g.Count() > 1);
         return used is null ? null : $"{used.Key} is assigned to more than one action. Clear one of them.";
+    }
+
+    static bool Duplicate(IEnumerable<string> names)
+    {
+        var list = names.Select(n => n.Trim()).ToList();
+        return list.Distinct(StringComparer.OrdinalIgnoreCase).Count() != list.Count;
     }
 
     void Fail(string message)
@@ -175,48 +204,95 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         }
     }
 
-    // ---- workspaces and apps -----------------------------------------------
+    // ---- modes, workspaces and apps ----------------------------------------
 
-    public void AddWorkspace()
+    string UniqueName(string baseName)
     {
-        Tabs.SelectedIndex = 0;
-        var baseName = "New workspace";
         var name = baseName;
         for (var i = 2; targets.Any(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase)); i++) name = $"{baseName} {i}";
-        var vm = Watch(new TargetVm(name, false, []));
-        targets.Add(vm);
+        return name;
+    }
+
+    void Select(TargetVm vm)
+    {
+        Tabs.SelectedIndex = 0;
         Targets.SelectedItem = vm;
+        Targets.ScrollIntoView(vm);
         TargetName.Focus();
         TargetName.SelectAll();
     }
 
-    void OnAddWorkspace(object sender, RoutedEventArgs e) => AddWorkspace();
-
-    void OnRemoveWorkspace(object sender, RoutedEventArgs e)
+    public void AddMode(ModeKind kind)
     {
-        if (Targets.SelectedItem is not TargetVm { IsGaming: false } t) return;
-        var index = targets.IndexOf(t);
-        targets.Remove(t);
-        Targets.SelectedIndex = Math.Min(index, targets.Count - 1);
+        var vm = Watch(new TargetVm(UniqueName("New mode"), kind == ModeKind.Apps ? TargetKind.AppsMode : TargetKind.WorkspacesMode, []));
+        targets.Add(vm);
+        Select(vm);
     }
 
-    void OnTargetChanged(object sender, SelectionChangedEventArgs e)
+    /// <summary>Adds a workspace to the named workspaces-mode, else the selected one, else the first. Creates "Work" if there is none.</summary>
+    public void AddWorkspace(string? modeName = null)
+    {
+        var modes = targets.Where(t => t.Kind == TargetKind.WorkspacesMode).ToList();
+        var selected = Targets.SelectedItem as TargetVm;
+        var mode = modes.FirstOrDefault(m => modeName is not null && string.Equals(m.Name, modeName, StringComparison.OrdinalIgnoreCase))
+                   ?? (selected?.Kind == TargetKind.WorkspacesMode ? selected : selected?.Parent)
+                   ?? modes.FirstOrDefault();
+        if (mode is null)
+        {
+            mode = Watch(new TargetVm(UniqueName("Work"), TargetKind.WorkspacesMode, []));
+            targets.Add(mode);
+        }
+
+        var vm = Watch(new TargetVm(UniqueName("New workspace"), TargetKind.Workspace, [], mode));
+        var index = targets.IndexOf(mode) + 1;
+        while (index < targets.Count && targets[index].Parent == mode) index++;
+        targets.Insert(index, vm);
+        Select(vm);
+    }
+
+    void OnAddWorkspace(object sender, RoutedEventArgs e) => AddWorkspace();
+
+    void OnAddMode(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = AddModeButton, Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom };
+        var withApps = new MenuItem { Header = "With apps, like Gaming" };
+        withApps.Click += (_, _) => AddMode(ModeKind.Apps);
+        var withWorkspaces = new MenuItem { Header = "With workspaces, like Work" };
+        withWorkspaces.Click += (_, _) => AddMode(ModeKind.Workspaces);
+        menu.Items.Add(withApps);
+        menu.Items.Add(withWorkspaces);
+        menu.IsOpen = true;
+    }
+
+    void OnRemoveTarget(object sender, RoutedEventArgs e)
+    {
+        if (Targets.SelectedItem is not TargetVm t) return;
+        var index = targets.IndexOf(t);
+        foreach (var child in targets.Where(c => c.Parent == t).ToList()) targets.Remove(child);
+        targets.Remove(t);
+        if (targets.Count > 0) Targets.SelectedIndex = Math.Min(index, targets.Count - 1);
+        else OnTargetChanged(Targets, null);
+    }
+
+    void OnTargetChanged(object sender, SelectionChangedEventArgs? e)
     {
         var t = Targets.SelectedItem as TargetVm;
         AppsPane.DataContext = t;
         AppList.ItemsSource = t?.Apps;
-        TargetName.IsEnabled = t is { IsGaming: false };
-        RemoveTarget.IsEnabled = t is { IsGaming: false };
+        TargetName.IsEnabled = t is not null;
+        RemoveTarget.IsEnabled = t is not null;
+        AppsSection.Visibility = t is { HasApps: true } ? Visibility.Visible : Visibility.Collapsed;
+        ModeHint.Visibility = t is { Kind: TargetKind.WorkspacesMode } ? Visibility.Visible : Visibility.Collapsed;
         if (t is { Apps.Count: > 0 }) AppList.SelectedIndex = 0; else AppList.SelectedItem = null;
         UpdateEmpty();
     }
 
     void UpdateEmpty() =>
-        NoAppsText.Visibility = Targets.SelectedItem is TargetVm { Apps.Count: 0 } ? Visibility.Visible : Visibility.Collapsed;
+        NoAppsText.Visibility = Targets.SelectedItem is TargetVm { HasApps: true, Apps.Count: 0 } ? Visibility.Visible : Visibility.Collapsed;
 
     void OnAddApp(object sender, RoutedEventArgs e)
     {
-        if (Targets.SelectedItem is not TargetVm t) return;
+        if (Targets.SelectedItem is not TargetVm { HasApps: true } t) return;
         var app = new AppVm();
         app.PropertyChanged += (_, _) => MarkDirty();
         t.Apps.Add(app);
@@ -270,7 +346,7 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         if (key is Key.Back or Key.Delete) { row.Value = ""; return; }
         if (mods == ModifierKeys.None || KeyName(key) is not { } name) return;
 
-        var parts = new System.Collections.Generic.List<string>();
+        var parts = new List<string>();
         if (mods.HasFlag(ModifierKeys.Control)) parts.Add("Ctrl");
         if (mods.HasFlag(ModifierKeys.Alt)) parts.Add("Alt");
         if (mods.HasFlag(ModifierKeys.Shift)) parts.Add("Shift");

@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows;
 using System.Windows.Forms;
+using WorkspaceLauncher.Core;
 
 namespace WorkspaceLauncher.App;
 
@@ -12,10 +13,10 @@ public sealed class TrayIcon : IDisposable
     readonly NotifyIcon icon;
     readonly AppHost host;
     readonly Action<string?> showPicker;
-    readonly Action<bool> showConfig;
+    readonly Action<ConfigIntent, string?> showConfig;
     readonly Action<bool> quit;
 
-    public TrayIcon(AppHost host, Action<string?> showPicker, Action<bool> showConfig, Action<bool> quit)
+    public TrayIcon(AppHost host, Action<string?> showPicker, Action<ConfigIntent, string?> showConfig, Action<bool> quit)
     {
         this.host = host;
         this.showPicker = showPicker;
@@ -50,19 +51,32 @@ public sealed class TrayIcon : IDisposable
         menu.Items.Add(new ToolStripMenuItem("Open picker", null, (_, _) => showPicker(null)) { Font = new Font(menu.Font, System.Drawing.FontStyle.Bold) });
         menu.Items.Add(new ToolStripSeparator());
 
-        menu.Items.Add(new ToolStripMenuItem("Gaming", null, (_, _) => host.StartGaming()) { Checked = sessions.GamingActive });
-
-        var work = new ToolStripMenuItem("Work");
         var active = sessions.ActiveWorkspaces;
-        foreach (var ws in host.Config.Work)
+        foreach (var mode in host.Config.Modes)
         {
-            var name = ws.Name;
-            work.DropDownItems.Add(new ToolStripMenuItem(name, null, (_, _) => host.OpenWorkspace(name))
-            { Checked = active.Contains(name, StringComparer.OrdinalIgnoreCase) });
+            var m = mode;
+            var running = string.Equals(sessions.ActiveMode, m.Name, StringComparison.OrdinalIgnoreCase);
+            if (m.Kind == ModeKind.Apps)
+            {
+                menu.Items.Add(new ToolStripMenuItem(m.Name, null, (_, _) => host.StartMode(m)) { Checked = running });
+                continue;
+            }
+            var submenu = new ToolStripMenuItem(m.Name) { Checked = running };
+            foreach (var ws in m.WorkspaceList)
+            {
+                var w = ws;
+                submenu.DropDownItems.Add(new ToolStripMenuItem(w.Name, null, (_, _) => host.OpenWorkspace(m, w))
+                { Checked = running && active.Contains(w.Name, StringComparer.OrdinalIgnoreCase) });
+            }
+            if (m.WorkspaceList.Count > 0) submenu.DropDownItems.Add(new ToolStripSeparator());
+            submenu.DropDownItems.Add(new ToolStripMenuItem("Add workspace…", null, (_, _) => showConfig(ConfigIntent.AddWorkspace, m.Name)));
+            menu.Items.Add(submenu);
         }
-        if (host.Config.Work.Count > 0) work.DropDownItems.Add(new ToolStripSeparator());
-        work.DropDownItems.Add(new ToolStripMenuItem("Add workspace…", null, (_, _) => showConfig(true)));
-        menu.Items.Add(work);
+
+        var add = new ToolStripMenuItem("Add mode");
+        add.DropDownItems.Add(new ToolStripMenuItem("With apps, like Gaming…", null, (_, _) => showConfig(ConfigIntent.AddAppsMode, null)));
+        add.DropDownItems.Add(new ToolStripMenuItem("With workspaces, like Work…", null, (_, _) => showConfig(ConfigIntent.AddWorkspacesMode, null)));
+        menu.Items.Add(add);
 
         if (active.Count > 0)
         {
@@ -76,7 +90,7 @@ public sealed class TrayIcon : IDisposable
         }
 
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("Settings…", null, (_, _) => showConfig(false)));
+        menu.Items.Add(new ToolStripMenuItem("Settings…", null, (_, _) => showConfig(ConfigIntent.Open, null)));
         menu.Items.Add(new ToolStripMenuItem("Start at login", null, (_, _) => AppHost.SetStartsAtLogin(!AppHost.StartsAtLogin))
         { Checked = AppHost.StartsAtLogin });
         menu.Items.Add(new ToolStripSeparator());

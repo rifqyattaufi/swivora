@@ -28,6 +28,7 @@ public sealed class AppHost : IDisposable
     readonly DispatcherTimer debounce;
     string? lastText;
     bool loaded;
+    string? lastMode; // the mode most recently asked for, so cycling continues even while a workspaces-mode waits for a pick
 
     public Config Config { get; private set; } = Config.Empty();
     public SessionManager Sessions { get; }
@@ -112,12 +113,19 @@ public sealed class AppHost : IDisposable
         Changed?.Invoke();
     }
 
-    public void StartGaming() => Run(() => Sessions.StartGaming(Config));
-
-    public void OpenWorkspace(string name)
+    /// <summary>Apps-mode: start it. Workspaces-mode: go straight to its only workspace, or let the user pick one.</summary>
+    public void StartMode(Mode mode)
     {
-        var ws = Config.Work.FirstOrDefault(w => string.Equals(w.Name, name, StringComparison.OrdinalIgnoreCase));
-        if (ws is not null) Run(() => Sessions.StartWorkspace(ws));
+        lastMode = mode.Name;
+        if (mode.Kind == ModeKind.Apps) Run(() => Sessions.StartMode(mode));
+        else if (mode.WorkspaceList.Count == 1) OpenWorkspace(mode, mode.WorkspaceList[0]);
+        else ShowPicker?.Invoke(mode.Name);
+    }
+
+    public void OpenWorkspace(Mode mode, Workspace workspace)
+    {
+        lastMode = mode.Name;
+        Run(() => Sessions.StartWorkspace(mode, workspace));
     }
 
     public void CloseWorkspace(string name) => Run(() => Sessions.CloseWorkspace(name));
@@ -126,15 +134,27 @@ public sealed class AppHost : IDisposable
 
     public void HandleHotkey(string name)
     {
+        var modes = Config.Modes;
         if (name == HotkeyDefaults.Picker) ShowPicker?.Invoke(null);
         else if (name == HotkeyDefaults.SwitchMode)
         {
-            if (Sessions.GamingActive) ShowPicker?.Invoke("work");
-            else StartGaming();
+            if (modes.Count == 0) return;
+            var from = lastMode ?? Sessions.ActiveMode;
+            var current = modes.FindIndex(m => string.Equals(m.Name, from, StringComparison.OrdinalIgnoreCase));
+            StartMode(modes[(current + 1) % modes.Count]);
         }
-        else if (name.StartsWith("workspace") && int.TryParse(name["workspace".Length..], out var n)
-                 && n >= 1 && n <= Config.Work.Count)
-            OpenWorkspace(Config.Work[n - 1].Name);
+        else if (TryIndex(name, "workspace", out var w))
+        {
+            var all = Config.AllWorkspaces();
+            if (w < all.Count) OpenWorkspace(all[w].Mode, all[w].Workspace);
+        }
+        else if (TryIndex(name, "mode", out var m) && m < modes.Count) StartMode(modes[m]);
+    }
+
+    static bool TryIndex(string name, string prefix, out int zeroBased)
+    {
+        zeroBased = -1;
+        return name.StartsWith(prefix) && int.TryParse(name[prefix.Length..], out var n) && n >= 1 && (zeroBased = n - 1) >= 0;
     }
 
     // ---- start at login ----------------------------------------------------

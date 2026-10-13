@@ -67,14 +67,16 @@
                     <DockPanel Grid.Column="0">
                         <TextBlock DockPanel.Dock="Top" Text="Modes and workspaces" FontWeight="SemiBold" Margin="0,0,0,8" />
                         <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
-                            <ui:Button Content="Add workspace" HorizontalAlignment="Stretch" Click="OnAddWorkspace" />
-                            <ui:Button x:Name="RemoveTarget" Content="Remove workspace" HorizontalAlignment="Stretch"
-                                       Margin="0,8,0,0" Click="OnRemoveWorkspace" />
+                            <ui:Button x:Name="AddModeButton" Content="Add mode" HorizontalAlignment="Stretch" Click="OnAddMode" />
+                            <ui:Button x:Name="AddWorkspaceButton" Content="Add workspace" HorizontalAlignment="Stretch"
+                                       Margin="0,8,0,0" Click="OnAddWorkspace" />
+                            <ui:Button x:Name="RemoveTarget" Content="Remove selected" HorizontalAlignment="Stretch"
+                                       Margin="0,8,0,0" Click="OnRemoveTarget" />
                         </StackPanel>
                         <ListBox x:Name="Targets" SelectionChanged="OnTargetChanged" AutomationProperties.Name="Modes and workspaces">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Margin="4,4">
+                                    <StackPanel Margin="{Binding Indent}">
                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Caption}" Margin="0" />
                                     </StackPanel>
@@ -87,28 +89,32 @@
                         <StackPanel DockPanel.Dock="Top">
                             <TextBlock Text="Name" FontWeight="SemiBold" Margin="0,0,0,6" />
                             <ui:TextBox x:Name="TargetName" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
-                                        AutomationProperties.Name="Workspace name" />
-                            <TextBlock Text="Apps" Style="{StaticResource FieldLabel}" />
+                                        AutomationProperties.Name="Name" />
                         </StackPanel>
-                        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
-                            <ui:Button Content="Add app" Click="OnAddApp" />
-                            <ui:Button Content="Remove" Margin="8,0,0,0" Click="OnRemoveApp" />
-                        </StackPanel>
-                        <Grid>
-                        <TextBlock x:Name="NoAppsText" Style="{StaticResource Caption}" FontSize="13" Margin="8,8,8,0"
-                                   Text="No apps yet. Add the programs this one needs." Visibility="Collapsed" />
-                        <ListBox x:Name="AppList" SelectionChanged="OnAppChanged" AutomationProperties.Name="Apps">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Margin="4,4">
-                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding Summary}" Style="{StaticResource Caption}" Margin="0"
-                                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                        </Grid>
+                        <TextBlock x:Name="ModeHint" Style="{StaticResource Caption}" FontSize="13" Margin="0,16,0,0" Visibility="Collapsed"
+                                   Text="This mode holds workspaces. Select one under it to edit its apps, or use Add workspace." />
+                        <DockPanel x:Name="AppsSection">
+                            <TextBlock DockPanel.Dock="Top" Text="Apps" Style="{StaticResource FieldLabel}" />
+                            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+                                <ui:Button Content="Add app" Click="OnAddApp" />
+                                <ui:Button Content="Remove" Margin="8,0,0,0" Click="OnRemoveApp" />
+                            </StackPanel>
+                            <Grid>
+                                <TextBlock x:Name="NoAppsText" Style="{StaticResource Caption}" FontSize="13" Margin="8,8,8,0"
+                                           Text="No apps yet. Add the programs this one needs." Visibility="Collapsed" />
+                                <ListBox x:Name="AppList" SelectionChanged="OnAppChanged" AutomationProperties.Name="Apps">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Margin="4,4">
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding Summary}" Style="{StaticResource Caption}" Margin="0"
+                                                           TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
+                        </DockPanel>
                     </DockPanel>
 
                     <Grid Grid.Column="4">
