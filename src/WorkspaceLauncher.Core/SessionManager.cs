@@ -45,6 +45,7 @@ public sealed class SessionManager(IDesktopBackend backend, ProcessRunner runner
         if (gaming is not null) return;
         var keep = config.Gaming.Select(Key).ToHashSet();
         foreach (var s in workspaces.Values.ToList()) await CloseSession(s, keep);
+        foreach (var s in workspaces.Values.ToList()) RemoveDesktop(s); // apps kept for gaming fall back to the home desktop
         workspaces.Clear();
         gaming = new Session("gaming", null);
         await LaunchApps(gaming, config.Gaming);

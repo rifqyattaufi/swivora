@@ -1,8 +1,6 @@
 <Solution>
-  <Folder Name="/spike/">
-    <Project Path="spike/DesktopSpike/DesktopSpike.csproj" />
-  </Folder>
   <Folder Name="/src/">
+    <Project Path="src/WorkspaceLauncher.App/WorkspaceLauncher.App.csproj" />
     <Project Path="src/WorkspaceLauncher.Core/WorkspaceLauncher.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">

@@ -28,6 +28,7 @@ public static class ConfigStore
     static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 

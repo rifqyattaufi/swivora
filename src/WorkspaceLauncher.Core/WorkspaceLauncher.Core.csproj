@@ -2,12 +2,15 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <NoWarn>CA1416</NoWarn>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\..\third_party\VirtualDesktopAccessor\VirtualDesktopAccessor.dll" Link="VirtualDesktopAccessor.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\third_party\VirtualDesktopAccessor\VirtualDesktopAccessor.dll" Link="VirtualDesktopAccessor.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
+
+
 

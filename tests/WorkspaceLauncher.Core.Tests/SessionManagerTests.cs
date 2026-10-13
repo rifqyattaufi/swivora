@@ -102,6 +102,7 @@ public class SessionManagerTests : IDisposable
         Assert.Equal(winverPid, Process.GetProcessesByName("winver").Single().Id); // not closed, not relaunched
         Assert.True(manager.GamingActive);
         Assert.Empty(manager.ActiveWorkspaces);
+        Assert.Single(desktops.Desktops); // the workspace desktop is gone, only home remains
     }
 
     [Fact]
