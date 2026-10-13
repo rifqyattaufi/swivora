@@ -4,3 +4,4 @@ obj/
 *.user
 publish/
 *.dll
+!third_party/**/*.dll

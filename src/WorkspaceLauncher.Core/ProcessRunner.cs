@@ -6,7 +6,7 @@ namespace WorkspaceLauncher.Core;
 /// <summary>A running app the daemon manages. CloseOnSwitch=false means never close it automatically.</summary>
 public sealed record Owned(Process Process, bool CloseOnSwitch);
 
-public sealed class ProcessRunner
+public class ProcessRunner
 {
     public Process? FindRunning(AppEntry app)
     {
@@ -48,10 +48,11 @@ public sealed class ProcessRunner
     Owned? Started(AppEntry app, bool closeOnSwitch) =>
         Launch(app) is { } p ? new(p, closeOnSwitch) : null;
 
-    /// <summary>Asks the main window to close and waits. False means still alive: caller decides on force kill.</summary>
-    public bool CloseGracefully(Process p, TimeSpan timeout)
+    /// <summary>Asks every window of the process to close and waits. False means still alive: caller decides on force kill.</summary>
+    public virtual bool CloseGracefully(Process p, TimeSpan timeout)
     {
         if (p.HasExited) return true;
+        foreach (var h in Windows.OfProcess(p.Id)) Windows.Close(h);
         p.CloseMainWindow();
         return p.WaitForExit(timeout);
     }

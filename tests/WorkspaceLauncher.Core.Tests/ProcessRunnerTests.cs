@@ -2,6 +2,7 @@ using System.Diagnostics;
 using WorkspaceLauncher.Core;
 
 // winver.exe is a classic Win32 dialog that closes on CloseMainWindow and ships with Windows.
+[Collection("gui")] // tests open real windows: never run two GUI classes at once
 public class ProcessRunnerTests : IDisposable
 {
     readonly ProcessRunner runner = new();
