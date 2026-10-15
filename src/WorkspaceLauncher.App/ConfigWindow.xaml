@@ -236,7 +236,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock x:Name="Status" Grid.Row="1" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,16,0"
+                <TextBlock x:Name="Status" Grid.Row="1" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Right" Margin="0,0,16,0"
                            AutomationProperties.LiveSetting="Polite" />
                 <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
                     <ui:Button Content="Revert" Margin="0,0,8,0" Click="OnRevert" />
