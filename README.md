@@ -1,5 +1,7 @@
 # Workspace Launcher
 
+[![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-Support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/rifqyattaufi) [![Support on Saweria](https://img.shields.io/badge/Saweria-Support-FAAE2B)](https://saweria.co/rifqyattaufi)
+
 Pick a mode when you sign in to Windows, then switch modes and project workspaces on the fly.
 
 You can have as many **modes** as you like, of two kinds:

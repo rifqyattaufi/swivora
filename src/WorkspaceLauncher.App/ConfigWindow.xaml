@@ -206,6 +206,7 @@
 
             <!-- General -->
             <TabItem Header="General">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="0,16,0,16" MaxWidth="620" HorizontalAlignment="Left">
                     <ui:ToggleSwitch x:Name="LoginSwitch" Content="Start when I sign in to Windows" Click="OnLoginToggled" />
                     <TextBlock Style="{StaticResource Caption}"
@@ -236,7 +237,15 @@
                     <TextBlock Text="Config file" Style="{StaticResource FieldLabel}" Margin="0,24,0,6" />
                     <TextBlock x:Name="ConfigPathText" TextWrapping="Wrap" />
                     <ui:Button Content="Open folder" Margin="0,8,0,0" Click="OnOpenFolder" />
+
+                    <TextBlock Text="Support" Style="{StaticResource FieldLabel}" Margin="0,24,0,6" />
+                    <TextBlock TextWrapping="Wrap" Text="Workspace Launcher is free and open source. If it saves you time, you can support its development." />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <ui:Button Content="Support on Ko-fi" Icon="{ui:SymbolIcon Heart24}" Click="OnKofi" />
+                        <ui:Button Content="Support on Saweria" Icon="{ui:SymbolIcon Heart24}" Margin="8,0,0,0" Click="OnSaweria" />
+                    </StackPanel>
                 </StackPanel>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
 

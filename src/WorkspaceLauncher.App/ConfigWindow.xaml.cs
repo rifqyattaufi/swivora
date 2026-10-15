@@ -534,6 +534,19 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
 
     void OnLoginToggled(object sender, RoutedEventArgs e) => AppHost.SetStartsAtLogin(LoginSwitch.IsChecked == true);
 
+    void OnKofi(object sender, RoutedEventArgs e) => OpenLink("https://ko-fi.com/rifqyattaufi");
+
+    void OnSaweria(object sender, RoutedEventArgs e) => OpenLink("https://saweria.co/rifqyattaufi");
+
+    void OpenLink(string url)
+    {
+        try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            Fail($"Could not open {url}: {ex.Message} Copy the address into your browser instead.");
+        }
+    }
+
     void OnOpenFolder(object sender, RoutedEventArgs e) =>
         Process.Start("explorer.exe", Path.GetDirectoryName(AppHost.ConfigPath)!);
 }
