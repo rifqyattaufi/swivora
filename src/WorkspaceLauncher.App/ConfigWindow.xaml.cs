@@ -287,6 +287,30 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         if (t is { Apps.Count: > 0 }) AppList.SelectedIndex = 0; else AppList.SelectedItem = null;
         UpdateEmpty();
         if (t is { Kind: TargetKind.WorkspacesMode }) NoAppText.Visibility = Visibility.Collapsed; // nothing to edit on the right yet
+        UpdateBar();
+    }
+
+    /// <summary>List buttons only belong to the Apps tab, and the middle ones follow what the middle pane shows.</summary>
+    void UpdateBar()
+    {
+        var onApps = Tabs.SelectedIndex == 0;
+        ModeButtons.Visibility = onApps ? Visibility.Visible : Visibility.Collapsed;
+        AppButtons.Visibility = onApps && AppsSection.Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
+        WorkspaceButtons.Visibility = onApps && WorkspacesSection.Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    void OnTabChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.Source == Tabs) UpdateBar();
+    }
+
+    /// <summary>Status sits left of Save and Revert when it fits, above them when the window is narrow.</summary>
+    void OnBarSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var narrow = Bar.ColumnDefinitions[4].ActualWidth < 340;
+        Grid.SetRow(Status, narrow ? 0 : 1);
+        Grid.SetColumnSpan(Status, narrow ? 2 : 1);
+        Status.Margin = new Thickness(0, 0, narrow ? 0 : 16, narrow ? 8 : 0);
     }
 
     void ShowWorkspaces(TargetVm? mode)
