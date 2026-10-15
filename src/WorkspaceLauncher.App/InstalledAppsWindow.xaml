@@ -1,0 +1,41 @@
+<ui:FluentWindow x:Class="WorkspaceLauncher.App.InstalledAppsWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 Title="Installed apps" Width="520" Height="620" MinWidth="420" MinHeight="420"
+                 WindowStartupLocation="CenterOwner" WindowBackdropType="Mica"
+                 ExtendsContentIntoTitleBar="True" ShowInTaskbar="False" KeyDown="OnKeyDown">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <ui:TitleBar Grid.Row="0" Title="Installed apps" ShowMaximize="False" ShowMinimize="False" />
+
+        <DockPanel Grid.Row="1" Margin="20,8,20,20">
+            <TextBlock DockPanel.Dock="Top" Text="Choose a program" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,12" />
+            <ui:TextBox x:Name="Search" DockPanel.Dock="Top" PlaceholderText="Search apps…" Margin="0,0,0,12"
+                        TextChanged="OnSearch" AutomationProperties.Name="Search apps" />
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                <ui:Button Content="Cancel" Click="OnCancel" />
+                <ui:Button x:Name="ChooseButton" Content="Choose" Appearance="Primary" Margin="8,0,0,0" IsEnabled="False" Click="OnChoose" />
+            </StackPanel>
+            <Grid>
+                <TextBlock x:Name="Message" Style="{StaticResource Caption}" FontSize="13" Margin="8,8,8,0"
+                           Text="Loading apps…" AutomationProperties.LiveSetting="Polite" />
+                <ListBox x:Name="Apps" SelectionChanged="OnSelected" MouseDoubleClick="OnDoubleClick"
+                         AutomationProperties.Name="Installed apps" Visibility="Collapsed">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="4,4">
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Exe}" Style="{StaticResource Caption}" Margin="0"
+                                           TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </DockPanel>
+    </Grid>
+</ui:FluentWindow>

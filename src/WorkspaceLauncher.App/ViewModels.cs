@@ -29,12 +29,15 @@ public sealed class AppVm : Observable
     Ownership ownership = Ownership.Adopt;
     int closeTimeout = 10;
 
-    public string Exe { get => exe; set { Set(ref exe, value); Raise(nameof(Title)); Raise(nameof(Summary)); } }
+    public string Exe { get => exe; set { Set(ref exe, value); Raise(nameof(Title)); Raise(nameof(Summary)); Raise(nameof(Presets)); Raise(nameof(HasPresets)); } }
     public string Args { get => args; set { Set(ref args, value); Raise(nameof(Summary)); } }
     public string Cwd { get => cwd; set => Set(ref cwd, value); }
     public Ownership Ownership { get => ownership; set => Set(ref ownership, value); }
     public int CloseTimeout { get => closeTimeout; set => Set(ref closeTimeout, value); }
     public string StopCommand { get => stopCommand; set => Set(ref stopCommand, value); }
+
+    public IReadOnlyList<ArgPreset> Presets => ArgPresets.For(Exe);
+    public bool HasPresets => Presets.Count > 0;
 
     public string Title => string.IsNullOrWhiteSpace(Exe) ? "New app" : System.IO.Path.GetFileNameWithoutExtension(Exe);
     public string Summary => string.IsNullOrWhiteSpace(Args) ? Exe : Args;

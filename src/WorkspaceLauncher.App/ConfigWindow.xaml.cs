@@ -362,6 +362,45 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         NoAppText.Visibility = a is null ? Visibility.Visible : Visibility.Collapsed;
     }
 
+    void OnPickInstalled(object sender, RoutedEventArgs e)
+    {
+        if (AppList.SelectedItem is not AppVm a) return;
+        var dialog = new InstalledAppsWindow { Owner = this };
+        if (dialog.ShowDialog() != true || dialog.Result is not { } app) return;
+        a.Exe = app.Exe;
+        if (string.IsNullOrWhiteSpace(a.Args)) a.Args = app.Args;
+    }
+
+    /// <summary>Fills Arguments from a ready-made line. Folders and files are asked for; text kinds leave the cursor at the end to finish typing.</summary>
+    void OnPreset(object sender, SelectionChangedEventArgs e)
+    {
+        if (PresetBox.SelectedItem is not ArgPreset p || AppList.SelectedItem is not AppVm a) return;
+        PresetBox.SelectedIndex = -1; // back to the empty box so the same preset can be picked again
+        string? value = null;
+        switch (p.Input)
+        {
+            case PresetInput.Folder:
+                using (var folder = new System.Windows.Forms.FolderBrowserDialog { UseDescriptionForTitle = true, Description = p.Label })
+                {
+                    if (folder.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+                    value = folder.SelectedPath;
+                }
+                break;
+            case PresetInput.File:
+                var file = new Microsoft.Win32.OpenFileDialog { Title = p.Label, Filter = p.FileFilter ?? "All files|*.*" };
+                if (file.ShowDialog(this) != true) return;
+                value = file.FileName;
+                break;
+        }
+        a.Args = p.Build(value);
+        ArgsBox.Focus();
+        if (p.Input == PresetInput.Text)
+        {
+            if (!a.Args.EndsWith('=')) a.Args += " ";
+            ArgsBox.CaretIndex = a.Args.Length;
+        }
+    }
+
     void OnBrowse(object sender, RoutedEventArgs e)
     {
         if (AppList.SelectedItem is not AppVm a) return;

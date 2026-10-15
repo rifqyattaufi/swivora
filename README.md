@@ -38,6 +38,7 @@ To build from source you need the .NET 10 SDK. `dotnet test` runs the tests; the
 | New mode | Settings > Apps > Add mode, or tray > Add mode |
 | New workspace | Picker > a workspaces mode > Add workspace, then fill in its apps |
 | Close one workspace | Tray > Close workspace |
+| Add an app | Settings > Apps > Add app. Pick the program from **Installed apps** (your Start menu list) or **Browse**. For common programs (File Explorer, VS Code, Chrome, Edge, Firefox, Windows Terminal, Steam and more) a **Common arguments** list fills the arguments for you. You can always type your own. |
 
 All hotkeys can be changed or turned off in **Settings > Hotkeys**. If another program already owns a hotkey you get a notice.
 
