@@ -73,6 +73,8 @@ All hotkeys can be changed or turned off in **Settings > Hotkeys**. If another p
 }
 ```
 
+Top level `onSwitch` decides what happens to the running mode's apps when you switch to another mode: `"close"` (default), `"ask"` (a Yes / No / Cancel question) or `"keep"` (leave them running and stop managing them). Apps the new mode also uses always stay open. Set it in Settings > General.
+
 Per mode: `name`, `kind`, `icon` (an emoji, or `img:icons\file.png` for a picture kept beside the config). Top level: `pickerStyle` (`"grid"` for big icons with the name below, anything else is the list). Both are set in Settings (Apps > Icon, General > Mode picker). Emoji are drawn in one color; use a picture for a full-color icon.
 
 Per app: `exe`, `name` (what lists show, default is the program's own product name), `args`, `cwd`, `closeTimeoutSeconds` (default 10), `stopCommand` (runs through `cmd /c` after the app closes), and `ownership`:

@@ -83,6 +83,7 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         }
 
         if (cfg.IsGrid) StyleGrid.IsChecked = true; else StyleList.IsChecked = true;
+        (cfg.Leave switch { LeavePolicy.Ask => LeaveAsk, LeavePolicy.Keep => LeaveKeep, _ => LeaveClose }).IsChecked = true;
 
         hotkeys.Clear();
         var merged = HotkeyDefaults.Merge(cfg.Hotkeys);
@@ -154,7 +155,8 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
     {
         if (Validate() is { } problem) { Fail(problem); return; }
 
-        try { host.Save(new Config(BuildModes(), ChangedHotkeys(), StyleGrid.IsChecked == true ? Config.Grid : null)); }
+        try { host.Save(new Config(BuildModes(), ChangedHotkeys(), StyleGrid.IsChecked == true ? Config.Grid : null,
+                LeaveAsk.IsChecked == true ? LeavePolicy.Ask : LeaveKeep.IsChecked == true ? LeavePolicy.Keep : null)); }
         catch (IOException ex) { Fail($"Could not save: {ex.Message}"); return; }
 
         shown = host.Config;

@@ -30,7 +30,12 @@ public sealed class AppHost : IDisposable
     bool loaded;
     string? lastMode; // the mode most recently asked for, so cycling continues even while a workspaces-mode waits for a pick
 
-    public Config Config { get; private set; } = Config.Empty();
+    Config config = Config.Empty();
+    public Config Config
+    {
+        get => config;
+        private set { config = value; Sessions.OnSwitch = value.Leave; }
+    }
     public SessionManager Sessions { get; }
     public IDesktopBackend Desktops { get; }
     public IReadOnlyList<string> Messages => messages;
@@ -50,6 +55,13 @@ public sealed class AppHost : IDisposable
                 $"{app.Exe} did not close in {app.CloseTimeoutSeconds} seconds.\n\nEnd it now? Unsaved work in it will be lost.",
                 "Workspace Launcher", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes),
         };
+        Sessions.ConfirmLeave = (running, next) => ui.Invoke(() =>
+        {
+            var answer = System.Windows.MessageBox.Show(
+                $"{running} still has apps open. Close them before opening {next}?\n\nYes closes them. No leaves them running. Cancel stays where you are.",
+                "Workspace Launcher", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            return answer switch { MessageBoxResult.Yes => LeaveChoice.Close, MessageBoxResult.No => LeaveChoice.Keep, _ => LeaveChoice.Cancel };
+        });
         Sessions.Warning += m => ui.BeginInvoke(() => Add(m));
 
         Load();

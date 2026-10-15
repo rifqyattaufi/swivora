@@ -4,6 +4,9 @@ namespace WorkspaceLauncher.Core;
 
 public sealed record Managed(AppEntry App, Owned Owned);
 
+/// <summary>The answer when asked what to do with the running mode's apps.</summary>
+public enum LeaveChoice { Close, Keep, Cancel }
+
 /// <summary>One running group of apps: the gaming mode (no desktop) or one work workspace (own virtual desktop).</summary>
 public sealed class Session(string name, Guid? desktop)
 {
@@ -32,6 +35,12 @@ public sealed class SessionManager(IDesktopBackend backend, ProcessRunner runner
     public Func<AppEntry, bool> ConfirmForceKill { get; set; } = _ => false;
     public event Action<string>? Warning;
 
+    /// <summary>What to do with the running mode's apps when another mode starts.</summary>
+    public LeavePolicy OnSwitch { get; set; } = LeavePolicy.Close;
+
+    /// <summary>Asked when <see cref="OnSwitch"/> is Ask: the running mode, then the mode about to start. Default: close.</summary>
+    public Func<string, string, LeaveChoice> ConfirmLeave { get; set; } = (_, _) => LeaveChoice.Close;
+
     /// <summary>Name of the mode that is running, or null. Only one mode runs at a time.</summary>
     public string? ActiveMode { get; private set; }
     public IReadOnlyList<string> ActiveWorkspaces => workspaces.Keys.ToList();
@@ -46,7 +55,7 @@ public sealed class SessionManager(IDesktopBackend backend, ProcessRunner runner
     public Task StartMode(Mode mode) => Locked(async () =>
     {
         if (Same(ActiveMode, mode.Name) && flat is not null) return;
-        await LeaveOtherModes(mode.Name, mode.AppList.Select(Key).ToHashSet());
+        if (!await LeaveOtherModes(mode.Name, mode.AppList.Select(Key).ToHashSet())) return;
         flat = new Session(mode.Name, null);
         await LaunchApps(flat, mode.AppList);
     });
@@ -59,7 +68,7 @@ public sealed class SessionManager(IDesktopBackend backend, ProcessRunner runner
             GoToDesktop(existing);
             return;
         }
-        await LeaveOtherModes(mode.Name, workspace.Apps.Select(Key).ToHashSet());
+        if (!await LeaveOtherModes(mode.Name, workspace.Apps.Select(Key).ToHashSet())) return;
         home ??= SafeCurrent();
         var session = new Session(workspace.Name, SafeCreate());
         workspaces[workspace.Name] = session;
@@ -93,18 +102,44 @@ public sealed class SessionManager(IDesktopBackend backend, ProcessRunner runner
 
     // ---- internals ---------------------------------------------------------
 
-    /// <summary>Switching to a different mode ends the running one. Apps in <paramref name="keep"/> stay open and are adopted by the new mode.</summary>
-    async Task LeaveOtherModes(string newMode, HashSet<string> keep)
+    bool HasRunningApps => flat is { Apps.Count: > 0 } || workspaces.Values.Any(s => s.Apps.Count > 0 || s.Windows.Count > 0);
+
+    /// <summary>
+    /// Switching to a different mode ends the running one, as <see cref="OnSwitch"/> says. Apps in <paramref name="keep"/> stay open
+    /// and are adopted by the new mode. Returns false when the user chose to stay where they are.
+    /// </summary>
+    async Task<bool> LeaveOtherModes(string newMode, HashSet<string> keep)
     {
         if (ActiveMode is not null && !Same(ActiveMode, newMode))
         {
-            foreach (var s in workspaces.Values.ToList()) await CloseSession(s, keep);
-            foreach (var s in workspaces.Values.ToList()) RemoveDesktop(s); // kept apps fall back to the home desktop
-            workspaces.Clear();
-            if (flat is { } f) await CloseSession(f, keep);
-            flat = null;
+            var policy = OnSwitch;
+            if (policy == LeavePolicy.Ask && HasRunningApps)
+            {
+                switch (ConfirmLeave(ActiveMode, newMode))
+                {
+                    case LeaveChoice.Cancel: return false;
+                    case LeaveChoice.Keep: policy = LeavePolicy.Keep; break;
+                    default: policy = LeavePolicy.Close; break;
+                }
+            }
+
+            if (policy == LeavePolicy.Keep)
+            {
+                // let go without closing anything: the apps and their desktops stay as they are, we just stop managing them
+                workspaces.Clear();
+                flat = null;
+            }
+            else
+            {
+                foreach (var s in workspaces.Values.ToList()) await CloseSession(s, keep);
+                foreach (var s in workspaces.Values.ToList()) RemoveDesktop(s); // kept apps fall back to the home desktop
+                workspaces.Clear();
+                if (flat is { } f) await CloseSession(f, keep);
+                flat = null;
+            }
         }
         ActiveMode = newMode;
+        return true;
     }
 
 

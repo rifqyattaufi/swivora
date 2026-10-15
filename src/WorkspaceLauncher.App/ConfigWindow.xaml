@@ -211,6 +211,15 @@
                     <TextBlock Style="{StaticResource Caption}"
                                Text="The picker appears at sign-in so you can choose Gaming or a workspace." />
 
+                    <TextBlock Text="When I switch to another mode" Style="{StaticResource FieldLabel}" Margin="0,24,0,6" />
+                    <StackPanel>
+                        <RadioButton x:Name="LeaveClose" GroupName="OnSwitch" Content="Close the apps of the current mode" Checked="OnStyleChanged" />
+                        <RadioButton x:Name="LeaveAsk" GroupName="OnSwitch" Content="Ask me first" Checked="OnStyleChanged" />
+                        <RadioButton x:Name="LeaveKeep" GroupName="OnSwitch" Content="Leave them running" Checked="OnStyleChanged" />
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource Caption}"
+                               Text="Apps the new mode also uses always stay open. Left-running apps are no longer managed: closing them is up to you." />
+
                     <TextBlock Text="Mode picker" Style="{StaticResource FieldLabel}" Margin="0,24,0,6" />
                     <StackPanel Orientation="Horizontal">
                         <RadioButton x:Name="StyleList" GroupName="PickerStyle" Content="List" Checked="OnStyleChanged"

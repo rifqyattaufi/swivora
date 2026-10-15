@@ -21,6 +21,19 @@ public class ConfigTests
     }
 
     [Fact]
+    public void OnSwitch_DefaultsToClose_AndRoundTrips()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"wl-{Guid.NewGuid()}", "config.json");
+        ConfigStore.Save(path, new Config([new Mode("A")], []));
+        Assert.DoesNotContain("onSwitch", File.ReadAllText(path));
+        Assert.Equal(LeavePolicy.Close, ConfigStore.Load(path).Leave);
+
+        ConfigStore.Save(path, new Config([new Mode("A")], [], null, LeavePolicy.Keep));
+        Assert.Contains("\"onSwitch\": \"keep\"", File.ReadAllText(path));
+        Assert.Equal(LeavePolicy.Keep, ConfigStore.Load(path).Leave);
+    }
+
+    [Fact]
     public void RoundTrip_KeepsAppsAndOwnership()
     {
         var path = Path.Combine(Path.GetTempPath(), $"wl-{Guid.NewGuid()}", "config.json");

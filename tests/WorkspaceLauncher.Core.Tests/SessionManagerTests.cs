@@ -50,6 +50,70 @@ public class SessionManagerTests : IDisposable
 
     static Mode GamingWith(params AppEntry[] apps) => new("Gaming", ModeKind.Apps, [.. apps]);
 
+    static Mode Streaming(params AppEntry[] apps) => new("Streaming", ModeKind.Apps, [.. apps]);
+
+    [Fact]
+    public async Task Keep_LeavesTheOldModeAppsRunning()
+    {
+        manager.OnSwitch = LeavePolicy.Keep;
+        await manager.StartMode(GamingWith(winver));
+        await manager.StartMode(Streaming(charmap));
+        Assert.Equal("Streaming", manager.ActiveMode);
+        Assert.Equal(1, Count("winver"));
+        Assert.Equal(1, Count("charmap"));
+    }
+
+    [Fact]
+    public async Task Keep_LeavesWorkspaceDesktopsAndAppsAlone()
+    {
+        manager.OnSwitch = LeavePolicy.Keep;
+        await manager.StartWorkspace(new Workspace("A", [winver]));
+        await manager.StartMode(Streaming(charmap));
+        Assert.Equal(1, Count("winver"));
+        Assert.Equal(2, desktops.Desktops.Count); // the workspace desktop was not removed
+        Assert.Empty(manager.ActiveWorkspaces);
+    }
+
+    [Fact]
+    public async Task Ask_Cancel_StaysInTheCurrentMode()
+    {
+        manager.OnSwitch = LeavePolicy.Ask;
+        manager.ConfirmLeave = (_, _) => LeaveChoice.Cancel;
+        await manager.StartMode(GamingWith(winver));
+        await manager.StartMode(Streaming(charmap));
+        Assert.Equal("Gaming", manager.ActiveMode);
+        Assert.Equal(1, Count("winver"));
+        Assert.Equal(0, Count("charmap"));
+    }
+
+    [Theory]
+    [InlineData(LeaveChoice.Close, 0)]
+    [InlineData(LeaveChoice.Keep, 1)]
+    public async Task Ask_FollowsTheAnswer_AndNamesBothModes(LeaveChoice answer, int winversLeft)
+    {
+        manager.OnSwitch = LeavePolicy.Ask;
+        string? seen = null;
+        manager.ConfirmLeave = (running, next) => { seen = $"{running}>{next}"; return answer; };
+        await manager.StartMode(GamingWith(winver));
+        await manager.StartMode(Streaming(charmap));
+        Assert.Equal("Gaming>Streaming", seen);
+        Assert.Equal("Streaming", manager.ActiveMode);
+        Assert.Equal(winversLeft, Count("winver"));
+        Assert.Equal(1, Count("charmap"));
+    }
+
+    [Fact]
+    public async Task Ask_IsSkippedWhenNothingIsRunning()
+    {
+        manager.OnSwitch = LeavePolicy.Ask;
+        var asked = false;
+        manager.ConfirmLeave = (_, _) => { asked = true; return LeaveChoice.Cancel; };
+        await manager.StartMode(GamingWith());
+        await manager.StartMode(Streaming(charmap));
+        Assert.False(asked);
+        Assert.Equal("Streaming", manager.ActiveMode);
+    }
+
     [Fact]
     public async Task StartWorkspace_CreatesOwnDesktop_GoesThere_LaunchesApps()
     {

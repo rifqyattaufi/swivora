@@ -5,6 +5,9 @@ namespace WorkspaceLauncher.Core;
 
 public enum Ownership { Adopt, Leave, LaunchOnly }
 
+/// <summary>What happens to the apps of the running mode when you switch to a different mode.</summary>
+public enum LeavePolicy { Close, Ask, Keep }
+
 /// <summary>Apps = one flat list started together (Gaming). Workspaces = several named groups, each on its own desktop (Work).</summary>
 public enum ModeKind { Apps, Workspaces }
 
@@ -31,8 +34,11 @@ public sealed record Mode(
 }
 
 /// <param name="PickerStyle">How the picker lists modes: "list" (default) or "grid".</param>
-public sealed record Config(List<Mode> Modes, Dictionary<string, string> Hotkeys, string? PickerStyle = null)
+/// <param name="OnSwitch">What to do with the running mode's apps when switching modes. Null means close them.</param>
+public sealed record Config(List<Mode> Modes, Dictionary<string, string> Hotkeys, string? PickerStyle = null, LeavePolicy? OnSwitch = null)
 {
+    [JsonIgnore] public LeavePolicy Leave => OnSwitch ?? LeavePolicy.Close;
+
     public const string Grid = "grid";
 
     [JsonIgnore] public bool IsGrid => string.Equals(PickerStyle, Grid, StringComparison.OrdinalIgnoreCase);
@@ -63,14 +69,15 @@ public static class ConfigStore
         List<AppEntry>? Gaming = null,
         List<Workspace>? Work = null,
         Dictionary<string, string>? Hotkeys = null,
-        string? PickerStyle = null);
+        string? PickerStyle = null,
+        LeavePolicy? OnSwitch = null);
 
     public static Config Load(string path)
     {
         if (!File.Exists(path)) return Config.Empty();
         var raw = JsonSerializer.Deserialize<Raw>(File.ReadAllText(path), Options) ?? new Raw();
         var modes = raw.Modes ?? [new Mode("Gaming", ModeKind.Apps, raw.Gaming ?? [], null, "🎮"), new Mode("Work", ModeKind.Workspaces, null, raw.Work ?? [], "💼")];
-        return new Config(modes, raw.Hotkeys ?? [], raw.PickerStyle);
+        return new Config(modes, raw.Hotkeys ?? [], raw.PickerStyle, raw.OnSwitch);
     }
 
     public static void Save(string path, Config config)
