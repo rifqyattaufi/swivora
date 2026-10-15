@@ -108,6 +108,18 @@
                                 <TextBlock Style="{StaticResource Caption}"
                                            Text="A full path, or a command on your PATH such as code." />
 
+                                <Border Margin="0,12,0,0" Padding="12" CornerRadius="4" BorderThickness="1"
+                                        Background="{DynamicResource SystemFillColorCautionBackgroundBrush}"
+                                        BorderBrush="{DynamicResource SystemFillColorCautionBrush}"
+                                        Visibility="{Binding HasStartup, Converter={StaticResource B2V}}">
+                                    <StackPanel>
+                                        <TextBlock Text="Starts with Windows" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding StartupMessage}" TextWrapping="Wrap" Margin="0,4,0,10"
+                                                   AutomationProperties.LiveSetting="Polite" />
+                                        <ui:Button Content="Turn off start with Windows" Click="OnTurnOffStartup" />
+                                    </StackPanel>
+                                </Border>
+
                                 <TextBlock Text="Arguments" Style="{StaticResource FieldLabel}" />
                                 <ui:TextBox x:Name="ArgsBox" Text="{Binding Args, UpdateSourceTrigger=PropertyChanged}"
                                             PlaceholderText="D:\Projects\my-app…" AutomationProperties.Name="Arguments" />

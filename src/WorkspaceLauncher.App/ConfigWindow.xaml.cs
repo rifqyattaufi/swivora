@@ -39,6 +39,13 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         InitializeComponent();
         this.host = host;
         SystemThemeWatcher.Watch(this);
+        AppVm.Startup = StartupEntries.Snapshot();
+        // someone may change Task Manager > Startup apps while Settings stays open
+        Activated += (_, _) =>
+        {
+            AppVm.Startup = StartupEntries.Snapshot();
+            foreach (var app in targets.SelectMany(t => t.Apps)) app.RefreshStartup();
+        };
 
         Targets.ItemsSource = targets;
         HotkeyList.ItemsSource = hotkeys;
@@ -101,17 +108,23 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
 
     T Watch<T>(T vm) where T : Observable
     {
-        vm.PropertyChanged += (_, _) => MarkDirty();
+        vm.PropertyChanged += OnVmChanged;
         if (vm is TargetVm t)
         {
             foreach (var a in t.Apps) Watch(a);
             t.Apps.CollectionChanged += (_, e) =>
             {
                 MarkDirty();
-                if (e.NewItems is not null) foreach (AppVm a in e.NewItems) a.PropertyChanged += (_, _) => MarkDirty();
+                if (e.NewItems is not null) foreach (AppVm a in e.NewItems) a.PropertyChanged += OnVmChanged;
             };
         }
         return vm;
+    }
+
+    /// <summary>The start-with-Windows warning follows the system, not the config, so it never counts as an edit.</summary>
+    void OnVmChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(AppVm.HasStartup) or nameof(AppVm.StartupMessage))) MarkDirty();
     }
 
     void MarkDirty() { if (!loading) SetDirty(true); }
@@ -339,7 +352,7 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
     {
         if (Targets.SelectedItem is not TargetVm { HasApps: true } t) return;
         var app = new AppVm();
-        app.PropertyChanged += (_, _) => MarkDirty();
+        app.PropertyChanged += OnVmChanged;
         t.Apps.Add(app);
         AppList.SelectedItem = app;
         UpdateEmpty();
@@ -360,6 +373,25 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         AppForm.DataContext = a;
         AppForm.Visibility = a is null ? Visibility.Collapsed : Visibility.Visible;
         NoAppText.Visibility = a is null ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    void OnTurnOffStartup(object sender, RoutedEventArgs e)
+    {
+        if (AppList.SelectedItem is not AppVm a) return;
+        try
+        {
+            foreach (var hit in a.StartupHits) StartupEntries.Disable(hit);
+        }
+        catch (Exception ex)
+        {
+            Fail($"Could not turn off start with Windows: {ex.Message} Open Task Manager > Startup apps and turn it off there.");
+            return;
+        }
+        var names = string.Join(", ", a.StartupHits.Select(h => h.Display).Distinct());
+        AppVm.Startup = StartupEntries.Snapshot();
+        foreach (var app in targets.SelectMany(t => t.Apps)) app.RefreshStartup();
+        Status.Text = $"{names} no longer starts with Windows.";
+        Status.ClearValue(TextBlock.ForegroundProperty);
     }
 
     void OnPickInstalled(object sender, RoutedEventArgs e)

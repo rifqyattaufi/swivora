@@ -29,12 +29,29 @@ public sealed class AppVm : Observable
     Ownership ownership = Ownership.Adopt;
     int closeTimeout = 10;
 
-    public string Exe { get => exe; set { Set(ref exe, value); Raise(nameof(Title)); Raise(nameof(Summary)); Raise(nameof(Presets)); Raise(nameof(HasPresets)); } }
+    public string Exe { get => exe; set { Set(ref exe, value); Raise(nameof(Title)); Raise(nameof(Summary)); Raise(nameof(Presets)); Raise(nameof(HasPresets)); RefreshStartup(); } }
     public string Args { get => args; set { Set(ref args, value); Raise(nameof(Summary)); } }
     public string Cwd { get => cwd; set => Set(ref cwd, value); }
     public Ownership Ownership { get => ownership; set => Set(ref ownership, value); }
     public int CloseTimeout { get => closeTimeout; set => Set(ref closeTimeout, value); }
     public string StopCommand { get => stopCommand; set => Set(ref stopCommand, value); }
+
+    /// <summary>What Windows starts at sign-in, read when Settings opens. Shared by every app row.</summary>
+    public static IReadOnlyList<StartupEntry> Startup { get; set; } = [];
+
+    public IReadOnlyList<StartupEntry> StartupHits => StartupEntries.Matching(Startup, Exe);
+    public bool HasStartup => StartupHits.Count > 0;
+    public string StartupMessage
+    {
+        get
+        {
+            var names = string.Join(", ", StartupHits.Select(h => h.Display).Distinct());
+            return $"{names} starts when you sign in to Windows, so it can be running before you pick a mode. " +
+                   "Turning it off keeps the entry. Task Manager > Startup apps can turn it back on.";
+        }
+    }
+
+    public void RefreshStartup() { Raise(nameof(HasStartup)); Raise(nameof(StartupMessage)); }
 
     public IReadOnlyList<ArgPreset> Presets => ArgPresets.For(Exe);
     public bool HasPresets => Presets.Count > 0;
