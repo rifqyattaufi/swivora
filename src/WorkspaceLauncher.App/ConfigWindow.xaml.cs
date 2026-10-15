@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using Wpf.Ui.Appearance;
 using WorkspaceLauncher.Core;
@@ -282,12 +283,32 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         TargetName.IsEnabled = t is not null;
         RemoveTarget.IsEnabled = t is not null;
         AppsSection.Visibility = t is { HasApps: true } ? Visibility.Visible : Visibility.Collapsed;
-        ModeHint.Visibility = t is { Kind: TargetKind.WorkspacesMode } ? Visibility.Visible : Visibility.Collapsed;
+        ShowWorkspaces(t is { Kind: TargetKind.WorkspacesMode } ? t : null);
         if (t is { Apps.Count: > 0 }) AppList.SelectedIndex = 0; else AppList.SelectedItem = null;
+        UpdateEmpty();
+        if (t is { Kind: TargetKind.WorkspacesMode }) NoAppText.Visibility = Visibility.Collapsed; // nothing to edit on the right yet
+    }
+
+    void ShowWorkspaces(TargetVm? mode)
+    {
+        WorkspacesSection.Visibility = mode is null ? Visibility.Collapsed : Visibility.Visible;
+        WorkspaceList.ItemsSource = mode is null ? null : new ListCollectionView(targets) { Filter = o => ((TargetVm)o).Parent == mode };
         UpdateEmpty();
     }
 
-    void UpdateEmpty() =>
+    // picking a workspace in the mode's list opens it for editing
+    void OnWorkspaceListChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (WorkspaceList.SelectedItem is TargetVm ws) Select(ws);
+    }
+
+    void UpdateEmpty()
+    {
+        NoWorkspacesText.Visibility = WorkspacesSection.Visibility == Visibility.Visible && WorkspaceList.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        UpdateEmptyApps();
+    }
+
+    void UpdateEmptyApps() =>
         NoAppsText.Visibility = Targets.SelectedItem is TargetVm { HasApps: true, Apps.Count: 0 } ? Visibility.Visible : Visibility.Collapsed;
 
     void OnAddApp(object sender, RoutedEventArgs e)

@@ -65,6 +65,7 @@ public sealed class TargetVm : Observable
         this.name = name;
         Kind = kind;
         Apps = new ObservableCollection<AppVm>(apps.Select(AppVm.From));
+        Apps.CollectionChanged += (_, _) => Raise(nameof(Summary));
         Parent = parent;
     }
 
@@ -83,6 +84,8 @@ public sealed class TargetVm : Observable
             if (value is not null) value.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(Name)) Raise(nameof(Subtitle)); };
         }
     }
+
+    public string Summary => Apps.Count switch { 0 => "No apps yet", 1 => "1 app", _ => $"{Apps.Count} apps" };
 
     public string Subtitle => Kind switch
     {
