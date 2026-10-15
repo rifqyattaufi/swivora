@@ -14,7 +14,8 @@ public sealed record AppEntry(
     string? Cwd = null,
     Ownership Ownership = Ownership.Adopt,
     int CloseTimeoutSeconds = 10,
-    string? StopCommand = null);
+    string? StopCommand = null,
+    string? Name = null); // what lists show; when null the program's own product name is used
 
 public sealed record Workspace(string Name, List<AppEntry> Apps);
 
@@ -22,16 +23,22 @@ public sealed record Mode(
     string Name,
     ModeKind Kind = ModeKind.Apps,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] List<AppEntry>? Apps = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] List<Workspace>? Workspaces = null)
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] List<Workspace>? Workspaces = null,
+    string? Icon = null) // an emoji, or "img:<path relative to the config folder>"
 {
     [JsonIgnore] public List<AppEntry> AppList => Apps ?? [];
     [JsonIgnore] public List<Workspace> WorkspaceList => Workspaces ?? [];
 }
 
-public sealed record Config(List<Mode> Modes, Dictionary<string, string> Hotkeys)
+/// <param name="PickerStyle">How the picker lists modes: "list" (default) or "grid".</param>
+public sealed record Config(List<Mode> Modes, Dictionary<string, string> Hotkeys, string? PickerStyle = null)
 {
+    public const string Grid = "grid";
+
+    [JsonIgnore] public bool IsGrid => string.Equals(PickerStyle, Grid, StringComparison.OrdinalIgnoreCase);
+
     /// <summary>First run: the two modes people expect, both empty.</summary>
-    public static Config Empty() => new([new Mode("Gaming"), new Mode("Work", ModeKind.Workspaces)], []);
+    public static Config Empty() => new([new Mode("Gaming", Icon: "🎮"), new Mode("Work", ModeKind.Workspaces, Icon: "💼")], []);
 
     public Mode? FindMode(string name) =>
         Modes.FirstOrDefault(m => string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase));
@@ -55,14 +62,15 @@ public static class ConfigStore
         List<Mode>? Modes = null,
         List<AppEntry>? Gaming = null,
         List<Workspace>? Work = null,
-        Dictionary<string, string>? Hotkeys = null);
+        Dictionary<string, string>? Hotkeys = null,
+        string? PickerStyle = null);
 
     public static Config Load(string path)
     {
         if (!File.Exists(path)) return Config.Empty();
         var raw = JsonSerializer.Deserialize<Raw>(File.ReadAllText(path), Options) ?? new Raw();
-        var modes = raw.Modes ?? [new Mode("Gaming", ModeKind.Apps, raw.Gaming ?? []), new Mode("Work", ModeKind.Workspaces, null, raw.Work ?? [])];
-        return new Config(modes, raw.Hotkeys ?? []);
+        var modes = raw.Modes ?? [new Mode("Gaming", ModeKind.Apps, raw.Gaming ?? [], null, "🎮"), new Mode("Work", ModeKind.Workspaces, null, raw.Work ?? [], "💼")];
+        return new Config(modes, raw.Hotkeys ?? [], raw.PickerStyle);
     }
 
     public static void Save(string path, Config config)

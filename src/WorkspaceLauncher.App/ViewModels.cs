@@ -25,11 +25,13 @@ public abstract class Observable : INotifyPropertyChanged
 
 public sealed class AppVm : Observable
 {
-    string exe = "", args = "", cwd = "", stopCommand = "";
+    string exe = "", name = "", args = "", cwd = "", stopCommand = "";
     Ownership ownership = Ownership.Adopt;
     int closeTimeout = 10;
 
-    public string Exe { get => exe; set { Set(ref exe, value); Raise(nameof(Title)); Raise(nameof(Summary)); Raise(nameof(Presets)); Raise(nameof(HasPresets)); RefreshStartup(); } }
+    public string Exe { get => exe; set { Set(ref exe, value); Name = ""; Raise(nameof(Icon)); Raise(nameof(Title)); Raise(nameof(Summary)); Raise(nameof(Presets)); Raise(nameof(HasPresets)); RefreshStartup(); } }
+    /// <summary>Shown in lists. Empty means use the program's own product name.</summary>
+    public string Name { get => name; set { Set(ref name, value); Raise(nameof(Title)); } }
     public string Args { get => args; set { Set(ref args, value); Raise(nameof(Summary)); } }
     public string Cwd { get => cwd; set => Set(ref cwd, value); }
     public Ownership Ownership { get => ownership; set => Set(ref ownership, value); }
@@ -56,12 +58,13 @@ public sealed class AppVm : Observable
     public IReadOnlyList<ArgPreset> Presets => ArgPresets.For(Exe);
     public bool HasPresets => Presets.Count > 0;
 
-    public string Title => string.IsNullOrWhiteSpace(Exe) ? "New app" : System.IO.Path.GetFileNameWithoutExtension(Exe);
+    public string Title => !string.IsNullOrWhiteSpace(Name) ? Name : string.IsNullOrWhiteSpace(Exe) ? "New app" : AppIcons.NameOf(Exe);
+    public System.Windows.Media.ImageSource? Icon => AppIcons.IconOf(Exe);
     public string Summary => string.IsNullOrWhiteSpace(Args) ? Exe : Args;
 
     public static AppVm From(AppEntry a) => new()
     {
-        exe = a.Exe, args = a.Args, cwd = a.Cwd ?? "", ownership = a.Ownership,
+        exe = a.Exe, name = a.Name ?? "", args = a.Args, cwd = a.Cwd ?? "", ownership = a.Ownership,
         closeTimeout = a.CloseTimeoutSeconds, stopCommand = a.StopCommand ?? "",
     };
 
@@ -69,7 +72,8 @@ public sealed class AppVm : Observable
         Exe.Trim(), Args.Trim(),
         string.IsNullOrWhiteSpace(Cwd) ? null : Cwd.Trim(),
         Ownership, Math.Max(1, CloseTimeout),
-        string.IsNullOrWhiteSpace(StopCommand) ? null : StopCommand.Trim());
+        string.IsNullOrWhiteSpace(StopCommand) ? null : StopCommand.Trim(),
+        string.IsNullOrWhiteSpace(Name) ? null : Name.Trim());
 }
 
 public enum TargetKind { AppsMode, WorkspacesMode, Workspace }
@@ -77,12 +81,13 @@ public enum TargetKind { AppsMode, WorkspacesMode, Workspace }
 /// <summary>One row of the left list: a mode (with its own apps, or holding workspaces) or a workspace under a mode.</summary>
 public sealed class TargetVm : Observable
 {
-    string name;
+    string name, icon;
     TargetVm? parent;
 
-    public TargetVm(string name, TargetKind kind, IEnumerable<AppEntry> apps, TargetVm? parent = null)
+    public TargetVm(string name, TargetKind kind, IEnumerable<AppEntry> apps, TargetVm? parent = null, string? icon = null)
     {
         this.name = name;
+        this.icon = icon ?? "";
         Kind = kind;
         Apps = new ObservableCollection<AppVm>(apps.Select(AppVm.From));
         Apps.CollectionChanged += (_, _) => Raise(nameof(Summary));
@@ -92,7 +97,24 @@ public sealed class TargetVm : Observable
     public TargetKind Kind { get; }
     public bool IsMode => Kind != TargetKind.Workspace;
     public bool HasApps => Kind != TargetKind.WorkspacesMode;
-    public string Name { get => name; set { Set(ref name, value); } }
+    public string Name { get => name; set { Set(ref name, value); Raise(nameof(Badge)); } }
+
+    /// <summary>An emoji, or "img:..." for a picture. Empty means the default for the mode.</summary>
+    public string Icon
+    {
+        get => icon;
+        set { Set(ref icon, value); Raise(nameof(Badge)); Raise(nameof(Emoji)); }
+    }
+
+    /// <summary>The emoji part of Icon for the text box. Only the first character is kept, so pasting a sentence does no harm.</summary>
+    public string Emoji
+    {
+        get => ModeIcons.IsImage(icon) ? "" : icon;
+        set => Icon = string.IsNullOrWhiteSpace(value) ? "" : System.Globalization.StringInfo.GetNextTextElement(value.Trim());
+    }
+
+    /// <summary>The picture for the list. Workspaces have none. A new element each time, so it can sit in several places.</summary>
+    public System.Windows.FrameworkElement? Badge => IsMode ? ModeIcons.Badge(Name, Icon, 32) : null;
     public ObservableCollection<AppVm> Apps { get; }
 
     public TargetVm? Parent

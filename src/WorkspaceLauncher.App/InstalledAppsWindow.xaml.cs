@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,6 +11,13 @@ using Wpf.Ui.Appearance;
 using WorkspaceLauncher.Core;
 
 namespace WorkspaceLauncher.App;
+
+/// <summary>One row of the list: the Start menu entry and its icon.</summary>
+public sealed record InstalledAppItem(InstalledApp App, System.Windows.Media.ImageSource? Icon)
+{
+    public string Name => App.Name;
+    public string Exe => App.Exe;
+}
 
 /// <summary>Pick a program from the Start menu list. Result is set when the user chooses one.</summary>
 public partial class InstalledAppsWindow : Wpf.Ui.Controls.FluentWindow
@@ -25,8 +33,8 @@ public partial class InstalledAppsWindow : Wpf.Ui.Controls.FluentWindow
         Loaded += async (_, _) =>
         {
             Search.Focus();
-            List<InstalledApp> list;
-            try { list = await Task.Run(() => InstalledApps.List()); }
+            List<InstalledAppItem> list;
+            try { list = await Task.Run(() => InstalledApps.List().Select(a => new InstalledAppItem(a, AppIcons.IconOf(a.Exe))).ToList()); }
             catch (Exception ex) { Message.Text = $"Could not read the app list: {ex.Message} Use Browse instead."; return; }
             view = CollectionViewSource.GetDefaultView(list);
             Apps.ItemsSource = view;
@@ -40,7 +48,7 @@ public partial class InstalledAppsWindow : Wpf.Ui.Controls.FluentWindow
     {
         if (view is null) return;
         var q = Search.Text.Trim();
-        view.Filter = string.IsNullOrEmpty(q) ? null : o => ((InstalledApp)o).Name.Contains(q, StringComparison.CurrentCultureIgnoreCase);
+        view.Filter = string.IsNullOrEmpty(q) ? null : o => ((InstalledAppItem)o).Name.Contains(q, StringComparison.CurrentCultureIgnoreCase);
         var any = !view.IsEmpty;
         Apps.Visibility = any ? Visibility.Visible : Visibility.Collapsed;
         Message.Visibility = any ? Visibility.Collapsed : Visibility.Visible;
@@ -54,7 +62,7 @@ public partial class InstalledAppsWindow : Wpf.Ui.Controls.FluentWindow
 
     void OnChoose(object sender, RoutedEventArgs e)
     {
-        Result = Apps.SelectedItem as InstalledApp;
+        Result = (Apps.SelectedItem as InstalledAppItem)?.App;
         DialogResult = Result is not null;
     }
 

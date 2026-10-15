@@ -3,6 +3,24 @@ using WorkspaceLauncher.Core;
 public class ConfigTests
 {
     [Fact]
+    public void RoundTrip_KeepsIconsAppNamesAndPickerStyle()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"wl-{Guid.NewGuid()}", "config.json");
+        ConfigStore.Save(path, new Config(
+            [new Mode("Gaming", ModeKind.Apps, [new AppEntry("steam.exe", Name: "Steam")], null, "🎮"), new Mode("Plain")],
+            [], Config.Grid));
+        var json = File.ReadAllText(path);
+        Assert.DoesNotContain("isGrid", json);
+        Assert.Contains("\"pickerStyle\": \"grid\"", json);
+        var back = ConfigStore.Load(path);
+        Assert.True(back.IsGrid);
+        Assert.Equal("🎮", back.Modes[0].Icon);
+        Assert.Equal("Steam", back.Modes[0].AppList[0].Name);
+        Assert.Null(back.Modes[1].Icon);
+        Assert.False(ConfigStore.Load(Path.Combine(Path.GetTempPath(), "nope", "c.json")).IsGrid);
+    }
+
+    [Fact]
     public void RoundTrip_KeepsAppsAndOwnership()
     {
         var path = Path.Combine(Path.GetTempPath(), $"wl-{Guid.NewGuid()}", "config.json");

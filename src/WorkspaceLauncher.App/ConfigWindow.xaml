@@ -39,10 +39,14 @@
                         <ListBox x:Name="Targets" SelectionChanged="OnTargetChanged" AutomationProperties.Name="Modes and workspaces">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <StackPanel Margin="{Binding Indent}">
-                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Caption}" Margin="0" />
-                                    </StackPanel>
+                                    <DockPanel Margin="{Binding Indent}">
+                                        <ContentControl DockPanel.Dock="Left" Content="{Binding Badge}" Margin="0,0,10,0"
+                                                        VerticalAlignment="Center" Focusable="False" IsTabStop="False" />
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Subtitle}" Style="{StaticResource Caption}" Margin="0" />
+                                        </StackPanel>
+                                    </DockPanel>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
@@ -53,6 +57,20 @@
                             <TextBlock Text="Name" FontWeight="SemiBold" Margin="0,0,0,6" />
                             <ui:TextBox x:Name="TargetName" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                                         AutomationProperties.Name="Name" />
+                            <StackPanel x:Name="IconSection">
+                                <TextBlock Text="Icon" Style="{StaticResource FieldLabel}" Margin="0,16,0,6" />
+                                <DockPanel>
+                                    <ContentControl x:Name="IconPreview" DockPanel.Dock="Left" Margin="0,0,10,0" VerticalAlignment="Center"
+                                                    Focusable="False" IsTabStop="False" />
+                                    <ui:TextBox x:Name="EmojiBox" Text="{Binding Emoji, UpdateSourceTrigger=PropertyChanged}"
+                                                PlaceholderText="Type or paste an emoji…" AutomationProperties.Name="Emoji icon" />
+                                </DockPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                    <ui:Button Content="Emoji panel" Click="OnEmojiPanel" />
+                                    <ui:Button Content="Image…" Margin="8,0,0,0" Click="OnIconImage" />
+                                    <ui:Button Content="Reset" Margin="8,0,0,0" Click="OnIconReset" />
+                                </StackPanel>
+                            </StackPanel>
                         </StackPanel>
                         <DockPanel x:Name="WorkspacesSection" Visibility="Collapsed">
                             <TextBlock DockPanel.Dock="Top" Text="Workspaces" Style="{StaticResource FieldLabel}" />
@@ -79,11 +97,15 @@
                                 <ListBox x:Name="AppList" SelectionChanged="OnAppChanged" AutomationProperties.Name="Apps">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <StackPanel Margin="4,4">
-                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{Binding Summary}" Style="{StaticResource Caption}" Margin="0"
-                                                           TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                                            </StackPanel>
+                                            <DockPanel Margin="4,4">
+                                                <Image DockPanel.Dock="Left" Source="{Binding Icon}" Width="28" Height="28" Margin="0,0,10,0"
+                                                       RenderOptions.BitmapScalingMode="HighQuality" />
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding Summary}" Style="{StaticResource Caption}" Margin="0"
+                                                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                </StackPanel>
+                                            </DockPanel>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
@@ -188,6 +210,16 @@
                     <ui:ToggleSwitch x:Name="LoginSwitch" Content="Start when I sign in to Windows" Click="OnLoginToggled" />
                     <TextBlock Style="{StaticResource Caption}"
                                Text="The picker appears at sign-in so you can choose Gaming or a workspace." />
+
+                    <TextBlock Text="Mode picker" Style="{StaticResource FieldLabel}" Margin="0,24,0,6" />
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="StyleList" GroupName="PickerStyle" Content="List" Checked="OnStyleChanged"
+                                     AutomationProperties.Name="Mode picker as a list" />
+                        <RadioButton x:Name="StyleGrid" GroupName="PickerStyle" Content="Grid" Margin="16,0,0,0" Checked="OnStyleChanged"
+                                     AutomationProperties.Name="Mode picker as a grid" />
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource Caption}"
+                               Text="A list shows each mode on a row. A grid shows big icons with the mode name below." />
 
                     <TextBlock Text="Separate desktops" Style="{StaticResource FieldLabel}" Margin="0,24,0,6" />
                     <TextBlock x:Name="DesktopInfo" TextWrapping="Wrap" />

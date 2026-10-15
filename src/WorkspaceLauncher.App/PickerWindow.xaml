@@ -18,6 +18,8 @@
             <StackPanel x:Name="ModePage">
                 <TextBlock Text="Choose a mode" FontSize="20" FontWeight="SemiBold" Margin="0,0,0,16" />
                 <StackPanel x:Name="ModeList" />
+                <UniformGrid x:Name="ModeGrid" Columns="3" Visibility="Collapsed"
+                             KeyboardNavigation.DirectionalNavigation="Cycle" />
                 <TextBlock x:Name="NoModesText" Opacity="0.7" TextWrapping="Wrap"
                            Text="No modes yet. Add one in Settings." />
             </StackPanel>
@@ -37,7 +39,8 @@
             </StackPanel>
 
             <DockPanel Margin="0,20,0,0">
-                <ui:Button DockPanel.Dock="Right" Content="Settings" Appearance="Transparent" Click="OnSettings" Padding="8,4" />
+                <ui:Button DockPanel.Dock="Right" Icon="{ui:SymbolIcon Settings24}" Appearance="Transparent" Click="OnSettings" Padding="8,6"
+                           ToolTip="Settings" AutomationProperties.Name="Settings" />
                 <TextBlock x:Name="Status" Opacity="0.7" FontSize="12" AutomationProperties.LiveSetting="Polite" TextWrapping="Wrap" VerticalAlignment="Center"
                            MaxWidth="250" HorizontalAlignment="Left" />
             </DockPanel>

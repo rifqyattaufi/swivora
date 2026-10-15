@@ -32,9 +32,12 @@ public partial class PickerWindow : Wpf.Ui.Controls.FluentWindow
         if (!IsVisible) Show();
         workMode = host.Config.FindMode(modeName ?? "") is { Kind: ModeKind.Workspaces } m ? m.Name : null;
         Refresh();
-        FocusFirst(workMode is null ? ModeList : WorkspaceList, workMode is null ? null : AddButton);
+        FocusFirst(workMode is null ? ModePanel : WorkspaceList, workMode is null ? null : AddButton);
         Activate();
     }
+
+    /// <summary>Whichever of the list or the grid is showing.</summary>
+    Panel ModePanel => host.Config.IsGrid ? ModeGrid : ModeList;
 
     void FocusFirst(Panel list, Control? fallback)
     {
@@ -47,8 +50,12 @@ public partial class PickerWindow : Wpf.Ui.Controls.FluentWindow
         var running = host.Sessions.ActiveWorkspaces;
         var activeMode = host.Sessions.ActiveMode;
 
-        // mode page
+        // mode page: a list of rows, or a grid of big icons with the name below
+        var grid = cfg.IsGrid;
         ModeList.Children.Clear();
+        ModeGrid.Children.Clear();
+        ModeList.Visibility = grid ? Visibility.Collapsed : Visibility.Visible;
+        ModeGrid.Visibility = grid ? Visibility.Visible : Visibility.Collapsed;
         foreach (var mode in cfg.Modes)
         {
             var m = mode;
@@ -56,13 +63,16 @@ public partial class PickerWindow : Wpf.Ui.Controls.FluentWindow
             var info = m.Kind == ModeKind.Apps
                 ? Plural(m.AppList.Count, "app") + (isActive ? ", running" : "")
                 : Plural(m.WorkspaceList.Count, "workspace") + (isActive && running.Count > 0 ? $", {running.Count} running" : "");
-            var button = Row(m.Name, info, 16, new Thickness(16, 12, 16, 12), "", () =>
+            Action choose = () =>
             {
                 if (m.Kind == ModeKind.Apps) { host.StartMode(m); Close(); }
                 else { workMode = m.Name; Refresh(); FocusFirst(WorkspaceList, AddButton); }
-            });
+            };
+            var button = grid
+                ? Tile(m, isActive, choose)
+                : Row(m.Name, info, 16, new Thickness(16, 12, 16, 12), "", choose, ModeIcons.Badge(m.Name, m.Icon, 40));
             AutomationProperties.SetName(button, $"{m.Name}, {info}");
-            ModeList.Children.Add(button);
+            ((Panel)(grid ? ModeGrid : ModeList)).Children.Add(button);
         }
         NoModesText.Visibility = cfg.Modes.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
@@ -93,9 +103,16 @@ public partial class PickerWindow : Wpf.Ui.Controls.FluentWindow
     }
 
     /// <summary>A full-width two-line button: title, subtitle, and an optional accent label on the right.</summary>
-    Button Row(string title, string subtitle, double titleSize, Thickness padding, string state, Action onClick)
+    Button Row(string title, string subtitle, double titleSize, Thickness padding, string state, Action onClick, UIElement? icon = null)
     {
         var row = new DockPanel();
+        if (icon is FrameworkElement badge)
+        {
+            badge.Margin = new Thickness(0, 0, 14, 0);
+            badge.VerticalAlignment = VerticalAlignment.Center;
+            DockPanel.SetDock(badge, Dock.Left);
+            row.Children.Add(badge);
+        }
         var stateText = new TextBlock
         {
             Text = state,
@@ -124,9 +141,46 @@ public partial class PickerWindow : Wpf.Ui.Controls.FluentWindow
         return button;
     }
 
+    /// <summary>A grid cell: a big icon with the mode name below it.</summary>
+    Button Tile(Mode mode, bool isActive, Action onClick)
+    {
+        var content = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+        var badge = ModeIcons.Badge(mode.Name, mode.Icon, 72);
+        badge.HorizontalAlignment = HorizontalAlignment.Center;
+        content.Children.Add(badge);
+        content.Children.Add(new TextBlock
+        {
+            Text = mode.Name,
+            FontSize = 14,
+            FontWeight = FontWeights.SemiBold,
+            TextAlignment = TextAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            Margin = new Thickness(0, 10, 0, 0),
+        });
+        if (isActive)
+            content.Children.Add(new TextBlock
+            {
+                Text = "Running",
+                FontSize = 12,
+                TextAlignment = TextAlignment.Center,
+                Foreground = (System.Windows.Media.Brush)FindResource("AccentTextFillColorPrimaryBrush"),
+            });
+        var button = new Button
+        {
+            Content = content,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            Padding = new Thickness(8, 14, 8, 12),
+            Margin = new Thickness(4),
+        };
+        button.Click += (_, _) => onClick();
+        return button;
+    }
+
     static string Plural(int n, string word) => n == 1 ? $"1 {word}" : $"{n} {word}s";
 
-    void OnBack(object sender, RoutedEventArgs e) { workMode = null; Refresh(); FocusFirst(ModeList, null); }
+    void OnBack(object sender, RoutedEventArgs e) { workMode = null; Refresh(); FocusFirst(ModePanel, null); }
     void OnAdd(object sender, RoutedEventArgs e) { showConfig(ConfigIntent.AddWorkspace, workMode); Close(); }
     void OnSettings(object sender, RoutedEventArgs e) { showConfig(ConfigIntent.Open, null); Close(); }
 

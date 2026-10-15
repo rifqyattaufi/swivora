@@ -73,7 +73,9 @@ All hotkeys can be changed or turned off in **Settings > Hotkeys**. If another p
 }
 ```
 
-Per app: `exe`, `args`, `cwd`, `closeTimeoutSeconds` (default 10), `stopCommand` (runs through `cmd /c` after the app closes), and `ownership`:
+Per mode: `name`, `kind`, `icon` (an emoji, or `img:icons\file.png` for a picture kept beside the config). Top level: `pickerStyle` (`"grid"` for big icons with the name below, anything else is the list). Both are set in Settings (Apps > Icon, General > Mode picker). Emoji are drawn in one color; use a picture for a full-color icon.
+
+Per app: `exe`, `name` (what lists show, default is the program's own product name), `args`, `cwd`, `closeTimeoutSeconds` (default 10), `stopCommand` (runs through `cmd /c` after the app closes), and `ownership`:
 
 - `adopt` (default): if the app is already running it becomes part of the mode or workspace and is closed when you leave.
 - `leave`: an app that is already running is never touched.

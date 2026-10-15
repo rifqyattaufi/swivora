@@ -74,13 +74,15 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         {
             if (mode.Kind == ModeKind.Apps)
             {
-                targets.Add(Watch(new TargetVm(mode.Name, TargetKind.AppsMode, mode.AppList)));
+                targets.Add(Watch(new TargetVm(mode.Name, TargetKind.AppsMode, mode.AppList, null, mode.Icon)));
                 continue;
             }
-            var parent = Watch(new TargetVm(mode.Name, TargetKind.WorkspacesMode, []));
+            var parent = Watch(new TargetVm(mode.Name, TargetKind.WorkspacesMode, [], null, mode.Icon));
             targets.Add(parent);
             foreach (var ws in mode.WorkspaceList) targets.Add(Watch(new TargetVm(ws.Name, TargetKind.Workspace, ws.Apps, parent)));
         }
+
+        if (cfg.IsGrid) StyleGrid.IsChecked = true; else StyleList.IsChecked = true;
 
         hotkeys.Clear();
         var merged = HotkeyDefaults.Merge(cfg.Hotkeys);
@@ -124,7 +126,9 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
     /// <summary>The start-with-Windows warning follows the system, not the config, so it never counts as an edit.</summary>
     void OnVmChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is not (nameof(AppVm.HasStartup) or nameof(AppVm.StartupMessage))) MarkDirty();
+        if (e.PropertyName is nameof(AppVm.HasStartup) or nameof(AppVm.StartupMessage)) return;
+        MarkDirty();
+        if (ReferenceEquals(sender, Targets.SelectedItem) && e.PropertyName is nameof(TargetVm.Icon) or nameof(TargetVm.Name)) UpdateIconPreview();
     }
 
     void MarkDirty() { if (!loading) SetDirty(true); }
@@ -150,7 +154,7 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
     {
         if (Validate() is { } problem) { Fail(problem); return; }
 
-        try { host.Save(new Config(BuildModes(), ChangedHotkeys())); }
+        try { host.Save(new Config(BuildModes(), ChangedHotkeys(), StyleGrid.IsChecked == true ? Config.Grid : null)); }
         catch (IOException ex) { Fail($"Could not save: {ex.Message}"); return; }
 
         shown = host.Config;
@@ -159,9 +163,11 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
     }
 
     List<Mode> BuildModes() => targets.Where(t => t.IsMode).Select(t => t.Kind == TargetKind.AppsMode
-        ? new Mode(t.Name.Trim(), ModeKind.Apps, t.Apps.Select(a => a.ToEntry()).ToList())
+        ? new Mode(t.Name.Trim(), ModeKind.Apps, t.Apps.Select(a => a.ToEntry()).ToList(), null, IconOrNull(t))
         : new Mode(t.Name.Trim(), ModeKind.Workspaces, null,
-            targets.Where(c => c.Parent == t).Select(c => new Workspace(c.Name.Trim(), c.Apps.Select(a => a.ToEntry()).ToList())).ToList())).ToList();
+            targets.Where(c => c.Parent == t).Select(c => new Workspace(c.Name.Trim(), c.Apps.Select(a => a.ToEntry()).ToList())).ToList(), IconOrNull(t))).ToList();
+
+    static string? IconOrNull(TargetVm t) => string.IsNullOrWhiteSpace(t.Icon) ? null : t.Icon;
 
     Dictionary<string, string> ChangedHotkeys()
     {
@@ -301,6 +307,7 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         UpdateEmpty();
         if (t is { Kind: TargetKind.WorkspacesMode }) NoAppText.Visibility = Visibility.Collapsed; // nothing to edit on the right yet
         UpdateBar();
+        UpdateIconPreview();
     }
 
     /// <summary>List buttons only belong to the Apps tab, and the middle ones follow what the middle pane shows.</summary>
@@ -394,12 +401,50 @@ public partial class ConfigWindow : Wpf.Ui.Controls.FluentWindow
         Status.ClearValue(TextBlock.ForegroundProperty);
     }
 
+    void OnStyleChanged(object sender, RoutedEventArgs e) => MarkDirty();
+
+    void OnEmojiPanel(object sender, RoutedEventArgs e)
+    {
+        EmojiBox.Focus();
+        ModeIcons.OpenEmojiPanel();
+    }
+
+    void OnIconImage(object sender, RoutedEventArgs e)
+    {
+        if (Targets.SelectedItem is not TargetVm { IsMode: true } t) return;
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Choose an icon picture",
+            Filter = "Pictures|*.png;*.jpg;*.jpeg;*.bmp;*.ico;*.gif|All files|*.*",
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        try { t.Icon = ModeIcons.ImportImage(dialog.FileName); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Fail($"Could not use that picture: {ex.Message} Try another file.");
+        }
+    }
+
+    void OnIconReset(object sender, RoutedEventArgs e)
+    {
+        if (Targets.SelectedItem is TargetVm { IsMode: true } t) t.Icon = "";
+    }
+
+    /// <summary>The preview beside the emoji box follows the selected mode's name and icon.</summary>
+    void UpdateIconPreview()
+    {
+        var t = Targets.SelectedItem as TargetVm;
+        IconSection.Visibility = t is { IsMode: true } ? Visibility.Visible : Visibility.Collapsed;
+        IconPreview.Content = t is { IsMode: true } ? ModeIcons.Badge(t.Name, t.Icon, 40) : null;
+    }
+
     void OnPickInstalled(object sender, RoutedEventArgs e)
     {
         if (AppList.SelectedItem is not AppVm a) return;
         var dialog = new InstalledAppsWindow { Owner = this };
         if (dialog.ShowDialog() != true || dialog.Result is not { } app) return;
         a.Exe = app.Exe;
+        a.Name = app.Name; // set after Exe, which clears it
         if (string.IsNullOrWhiteSpace(a.Args)) a.Args = app.Args;
     }
 
