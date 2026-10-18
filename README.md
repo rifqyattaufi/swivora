@@ -1,6 +1,10 @@
-# Workspace Launcher
+<p align="center"><img src="assets/brand/swivora-icon.png" width="128" alt="Swivora" /></p>
 
-[![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-Support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/rifqyattaufi) [![Support on Saweria](https://img.shields.io/badge/Saweria-Support-FAAE2B)](https://saweria.co/rifqyattaufi)
+# Swivora
+
+**Your Workspace, One Switch.**
+
+[![Support Swivora on Ko-fi](https://img.shields.io/badge/Ko--fi-Support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/rifqyattaufi) [![Support on Saweria](https://img.shields.io/badge/Saweria-Support-FAAE2B)](https://saweria.co/rifqyattaufi)
 
 Pick a mode when you sign in to Windows, then switch modes and project workspaces on the fly.
 
@@ -25,7 +29,7 @@ Build a self-contained release (no .NET needed on the target PC):
 .\scripts\publish.ps1
 ```
 
-Run `publish\WorkspaceLauncher.exe`. Keep `VirtualDesktopAccessor.dll` next to it. Turn on **Settings > General > Start when I sign in** to get the picker at every sign-in.
+Run `publish\Swivora.exe`. Keep `VirtualDesktopAccessor.dll` next to it. Turn on **Settings > General > Start when I sign in** to get the picker at every sign-in.
 
 To build from source you need the .NET 10 SDK. `dotnet test` runs the tests; they open and close a few real windows (winver, charmap) and briefly flip a virtual desktop.
 
@@ -46,7 +50,7 @@ All hotkeys can be changed or turned off in **Settings > Hotkeys**. If another p
 
 ## Config
 
-`%APPDATA%\WorkspaceLauncher\config.json` (set `WORKSPACE_LAUNCHER_CONFIG` to use another file). The settings window edits it; hand edits are picked up live. Files from the first version (`"gaming"` and `"work"` at the top level) are still read and become the two modes Gaming and Work.
+`%APPDATA%\Swivora\config.json` (set `SWIVORA_CONFIG` to use another file). If you used this app under its old name (Workspace Launcher), your config is copied over on the first start. The settings window edits it; hand edits are picked up live. Files from the first version (`"gaming"` and `"work"` at the top level) are still read and become the two modes Gaming and Work.
 
 ```json
 {

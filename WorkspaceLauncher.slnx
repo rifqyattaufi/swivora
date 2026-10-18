@@ -1,9 +1,0 @@
-<Solution>
-  <Folder Name="/src/">
-    <Project Path="src/WorkspaceLauncher.App/WorkspaceLauncher.App.csproj" />
-    <Project Path="src/WorkspaceLauncher.Core/WorkspaceLauncher.Core.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/WorkspaceLauncher.Core.Tests/WorkspaceLauncher.Core.Tests.csproj" />
-  </Folder>
-</Solution>
