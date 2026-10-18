@@ -1,20 +1,31 @@
-<p align="center"><img src="assets/brand/swivora-icon.png" width="128" alt="Swivora" /></p>
+<p align="center">
+  <img src="assets/brand/swivora-icon.png" width="140" alt="Swivora" />
+</p>
 
-# Swivora
+<h1 align="center">Swivora</h1>
 
-**Your Workspace, One Switch.**
+<p align="center"><b>Your Workspace, One Switch.</b></p>
 
-[![Support Swivora on Ko-fi](https://img.shields.io/badge/Ko--fi-Support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/rifqyattaufi) [![Support on Saweria](https://img.shields.io/badge/Saweria-Support-FAAE2B)](https://saweria.co/rifqyattaufi)
+<p align="center">
+  <img alt="Windows 11" src="https://img.shields.io/badge/Windows-11-3B82F6" />
+  <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10-8B5CF6" />
+  <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-1E1B4B" />
+  <a href="https://ko-fi.com/rifqyattaufi"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Ko--fi-Support-FF5E5B?logo=ko-fi&logoColor=white" /></a>
+  <a href="https://saweria.co/rifqyattaufi"><img alt="Support on Saweria" src="https://img.shields.io/badge/Saweria-Support-FAAE2B" /></a>
+</p>
 
-Pick a mode when you sign in to Windows, then switch modes and project workspaces on the fly.
+Swivora is a small Windows 11 tray app. Pick a mode when you sign in, then switch modes and project workspaces on the fly. Every workspace has its own apps and opens on its own Windows virtual desktop.
 
-You can have as many **modes** as you like, of two kinds:
+## Built for your flow
 
-- **Apps mode** (like *Gaming*): one list of apps, started together (Discord, Steam, ...).
-- **Workspaces mode** (like *Work*): one **workspace per project**. Each workspace has its own app list (for example only one of them needs Docker) and opens on its **own Windows virtual desktop**.
-
-Several workspaces of a mode can run at once. Switching between them only changes the desktop, so nothing is closed or restarted. Switching **mode** closes the old mode's apps politely (like clicking X) and starts the new ones. Apps that both modes use stay open.
-- Everything is driven from a tray icon, a picker window and global hotkeys. A settings window edits the config.
+- **Modes, as many as you like.** *Gaming*, *Work*, *Streaming*, anything. Each mode has a name and an icon (an emoji or a picture), shown as a list or as a grid of big icons.
+- **Apps modes** (like *Gaming*): one list of apps, started together (Discord, Steam, ...).
+- **Workspaces modes** (like *Work*): one **workspace per project**. Each workspace has its own app list (for example only one of them needs Docker) and opens on its **own Windows virtual desktop**.
+- **Several workspaces at once.** Switching between them only changes the desktop, so nothing is closed or restarted.
+- **Polite switching.** Changing **mode** closes the old mode's apps like clicking X, then starts the new ones. You choose: always close, ask first, or leave them running. Apps both modes use stay open.
+- **Easy setup.** Pick apps from your Windows app list, with names and icons. Common programs come with ready-made arguments, and Swivora warns you when an app already starts with Windows.
+- **Global hotkeys** for the picker, the next mode and workspaces 1 to 9.
+- **Open source (MIT).** Everything is driven from a tray icon, a picker window and hotkeys. A settings window edits the config.
 
 ## Requirements
 
@@ -31,7 +42,7 @@ Build a self-contained release (no .NET needed on the target PC):
 
 Run `publish\Swivora.exe`. Keep `VirtualDesktopAccessor.dll` next to it. Turn on **Settings > General > Start when I sign in** to get the picker at every sign-in.
 
-To build from source you need the .NET 10 SDK. `dotnet test` runs the tests; they open and close a few real windows (winver, charmap) and briefly flip a virtual desktop.
+To build from source, clone the repo (`git clone https://github.com/rifqyattaufi/swivora.git`) and install the .NET 10 SDK. `dotnet test` runs the tests; they open and close a few real windows (winver, charmap) and briefly flip a virtual desktop.
 
 ## Use
 
@@ -97,6 +108,14 @@ Apps that ignore the close request are not killed silently: you are asked first.
 - New windows are matched to a workspace by "appeared after launch", so a window you open by hand in the first few seconds can be pulled in.
 - Apps with a single shared process (some browsers, editors) are closed through their windows. Use `leave` for apps you also use outside a workspace.
 - Touchpad gestures are not supported. Windows' own four-finger swipe already moves between virtual desktops.
+
+## Brand
+
+Swivora's mark is three leaning bars in a blue to violet gradient. Colors: blue `#3B82F6`, violet `#8B5CF6`, indigo `#1E1B4B`, light gray `#E5E7EB`. The icons in `assets/brand/` and the app icon are drawn by `scripts/make-brand-assets.py` (needs Pillow and numpy).
+
+## Support
+
+Swivora is free. If it saves you time, you can support its development on [Ko-fi](https://ko-fi.com/rifqyattaufi) or [Saweria](https://saweria.co/rifqyattaufi), or open Settings > General in the app.
 
 ## Third-party
 
